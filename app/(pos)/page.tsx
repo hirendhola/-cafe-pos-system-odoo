@@ -8,7 +8,7 @@ export default async function PosOrderPage({
 }) {
   const { table: tableId } = await searchParams
 
-  const [categories, products, table] = await Promise.all([
+  const [categories, products, table, openSession] = await Promise.all([
     prisma.category.findMany({ orderBy: { name: "asc" } }),
     prisma.product.findMany({
       where: { active: true },
@@ -31,7 +31,8 @@ export default async function PosOrderPage({
           },
         })
       : null,
+    prisma.posSession.findFirst({ where: { closedAt: null }, select: { id: true } }),
   ])
 
-  return <OrderView categories={categories} products={products} table={table} />
+  return <OrderView categories={categories} products={products} table={table} hasOpenSession={!!openSession} />
 }
