@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
+import { Prisma } from "@/generated/prisma/client";
 import { requireUser } from "@/lib/api-helpers";
 import { prisma } from "@/lib/db";
 
@@ -8,23 +9,32 @@ export async function GET(request: NextRequest) {
   const { response } = await requireUser();
   if (response) return response;
 
-  const q = request.nextUrl.searchParams.get("q")?.trim();
+  const { searchParams } = request.nextUrl;
+  const q = searchParams.get("q")?.trim();
+  const page = Math.max(1, Number(searchParams.get("page")) || 1);
+  const pageSize = Math.min(50, Math.max(1, Number(searchParams.get("pageSize")) || 10));
 
-  const customers = await prisma.customer.findMany({
-    where: q
-      ? {
-          OR: [
-            { name: { contains: q, mode: "insensitive" } },
-            { email: { contains: q, mode: "insensitive" } },
-            { phone: { contains: q, mode: "insensitive" } },
-          ],
-        }
-      : undefined,
-    orderBy: { name: "asc" },
-    take: q ? 10 : undefined,
-  });
+  const where: Prisma.CustomerWhereInput | undefined = q
+    ? {
+        OR: [
+          { name: { contains: q, mode: "insensitive" } },
+          { email: { contains: q, mode: "insensitive" } },
+          { phone: { contains: q, mode: "insensitive" } },
+        ],
+      }
+    : undefined;
 
-  return NextResponse.json(customers);
+  const [customers, total] = await Promise.all([
+    prisma.customer.findMany({
+      where,
+      orderBy: { name: "asc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.customer.count({ where }),
+  ]);
+
+  return NextResponse.json({ customers, total });
 }
 
 const emailField = z
