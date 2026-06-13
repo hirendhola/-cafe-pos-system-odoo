@@ -34,7 +34,7 @@ export function FloorTablePopup({
   const router = useRouter()
 
   const handleSelect = (tableId: string) => {
-    router.push(`/?table=${tableId}`)
+    router.push(`/pos?table=${tableId}`)
     onOpenChange(false)
   }
 

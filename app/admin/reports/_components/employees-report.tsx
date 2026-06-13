@@ -2,13 +2,13 @@
 
 import * as React from "react"
 
-import { ArrowDown, ArrowUp, ArrowUpDown, Download } from "lucide-react"
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react"
 
 import { EmployeeRevenueChart } from "@/components/admin/charts/employee-revenue-chart"
 import { DateRangeFilter, defaultDateRange, type DateRangeValue } from "@/components/admin/date-range-filter"
-import { Button } from "@/components/ui/button"
+import { ExportMenu } from "@/components/admin/export-menu"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { downloadCsv, toCsv } from "@/lib/csv"
+import type { CsvColumn } from "@/lib/csv"
 import { currency, number } from "@/lib/format"
 import type { EmployeeReportRow } from "@/lib/reports"
 
@@ -61,19 +61,13 @@ export function EmployeesReport() {
     }
   }
 
-  const handleExport = () => {
-    if (!rows) return
-
-    const csv = toCsv(rows, [
-      { key: "name", label: "Employee" },
-      { key: "ordersPaid", label: "Orders Handled" },
-      { key: "revenue", label: "Revenue", format: (row) => row.revenue.toFixed(2) },
-      { key: "aov", label: "Avg. Order Value", format: (row) => row.aov.toFixed(2) },
-      { key: "ordersCreated", label: "Orders Created" },
-    ])
-
-    downloadCsv(`employees-${range.from.toISOString().slice(0, 10)}-to-${range.to.toISOString().slice(0, 10)}.csv`, csv)
-  }
+  const exportColumns: CsvColumn<EmployeeReportRow>[] = [
+    { key: "name", label: "Employee" },
+    { key: "ordersPaid", label: "Orders Handled" },
+    { key: "revenue", label: "Revenue", format: (row) => row.revenue.toFixed(2) },
+    { key: "aov", label: "Avg. Order Value", format: (row) => row.aov.toFixed(2) },
+    { key: "ordersCreated", label: "Orders Created" },
+  ]
 
   const chartData = sorted.slice(0, 8).map((row) => ({ name: row.name, revenue: row.revenue }))
 
@@ -81,9 +75,12 @@ export function EmployeesReport() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <DateRangeFilter value={range} onChange={setRange} />
-        <Button variant="outline" size="sm" onClick={handleExport} disabled={!rows}>
-          <Download /> Export CSV
-        </Button>
+        <ExportMenu
+          data={rows}
+          columns={exportColumns}
+          filename={`employees-${range.from.toISOString().slice(0, 10)}-to-${range.to.toISOString().slice(0, 10)}`}
+          sheetName="Employees"
+        />
       </div>
 
       {loading || !rows ? (

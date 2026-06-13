@@ -41,7 +41,7 @@ export function LoginForm() {
       },
       {
         onSuccess: () => {
-          const redirectTo = searchParams.get("redirect") ?? "/"
+          const redirectTo = searchParams.get("redirect") ?? "/pos"
           router.push(redirectTo)
           router.refresh()
         },

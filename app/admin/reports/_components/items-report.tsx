@@ -2,15 +2,15 @@
 
 import * as React from "react"
 
-import { ArrowDown, ArrowUp, ArrowUpDown, Download } from "lucide-react"
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react"
 
 import { CategoryBreakdownChart } from "@/components/admin/charts/category-breakdown-chart"
 import { TopProductsChart } from "@/components/admin/charts/top-products-chart"
 import { DateRangeFilter, defaultDateRange, type DateRangeValue } from "@/components/admin/date-range-filter"
-import { Button } from "@/components/ui/button"
+import { ExportMenu } from "@/components/admin/export-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { downloadCsv, toCsv } from "@/lib/csv"
+import type { CsvColumn } from "@/lib/csv"
 import { currency, number } from "@/lib/format"
 import type { CategoryReportRow, ItemReportRow } from "@/lib/reports"
 
@@ -70,20 +70,14 @@ export function ItemsReport({ categories }: { categories: { id: string; name: st
     }
   }
 
-  const handleExport = () => {
-    if (!data) return
-
-    const csv = toCsv(data.items, [
-      { key: "name", label: "Product" },
-      { key: "categoryName", label: "Category" },
-      { key: "qty", label: "Qty Sold" },
-      { key: "grossRevenue", label: "Gross Revenue", format: (row) => row.grossRevenue.toFixed(2) },
-      { key: "discount", label: "Discount Given", format: (row) => row.discount.toFixed(2) },
-      { key: "netRevenue", label: "Net Revenue", format: (row) => row.netRevenue.toFixed(2) },
-    ])
-
-    downloadCsv(`items-${range.from.toISOString().slice(0, 10)}-to-${range.to.toISOString().slice(0, 10)}.csv`, csv)
-  }
+  const exportColumns: CsvColumn<ItemReportRow>[] = [
+    { key: "name", label: "Product" },
+    { key: "categoryName", label: "Category" },
+    { key: "qty", label: "Qty Sold" },
+    { key: "grossRevenue", label: "Gross Revenue", format: (row) => row.grossRevenue.toFixed(2) },
+    { key: "discount", label: "Discount Given", format: (row) => row.discount.toFixed(2) },
+    { key: "netRevenue", label: "Net Revenue", format: (row) => row.netRevenue.toFixed(2) },
+  ]
 
   const topProducts = (data?.items ?? []).slice(0, 10).map((item) => ({ name: item.name, netRevenue: item.netRevenue }))
 
@@ -106,9 +100,12 @@ export function ItemsReport({ categories }: { categories: { id: string; name: st
             </SelectContent>
           </Select>
         </div>
-        <Button variant="outline" size="sm" onClick={handleExport} disabled={!data}>
-          <Download /> Export CSV
-        </Button>
+        <ExportMenu
+          data={data?.items}
+          columns={exportColumns}
+          filename={`items-${range.from.toISOString().slice(0, 10)}-to-${range.to.toISOString().slice(0, 10)}`}
+          sheetName="Items"
+        />
       </div>
 
       {loading || !data ? (

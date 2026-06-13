@@ -13,7 +13,7 @@ import { SessionBar } from "@/components/pos/session-bar"
 import { Button } from "@/components/ui/button"
 
 const navLinks = [
-  { href: "/", label: "Order View", icon: LayoutGrid },
+  { href: "/pos", label: "Order View", icon: LayoutGrid },
   { href: "/kds", label: "Kitchen Display", icon: UtensilsCrossed },
   { href: "/orders", label: "Orders", icon: ReceiptText },
 ]

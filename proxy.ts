@@ -9,6 +9,10 @@ const AUTH_PAGES = ["/login", "/signup"];
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  if (pathname === "/") {
+    return NextResponse.next();
+  }
+
   const session = await auth.api.getSession({
     headers: await headers(),
   });

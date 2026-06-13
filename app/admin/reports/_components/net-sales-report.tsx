@@ -2,15 +2,13 @@
 
 import * as React from "react"
 
-import { Download } from "lucide-react"
-
 import { CategoryBreakdownChart } from "@/components/admin/charts/category-breakdown-chart"
 import { PaymentBreakdownChart } from "@/components/admin/charts/payment-breakdown-chart"
 import { SalesTrendChart } from "@/components/admin/charts/sales-trend-chart"
 import { DateRangeFilter, defaultDateRange, type DateRangeValue } from "@/components/admin/date-range-filter"
+import { ExportMenu } from "@/components/admin/export-menu"
 import { KpiCard } from "@/components/admin/kpi-card"
-import { Button } from "@/components/ui/button"
-import { downloadCsv, toCsv } from "@/lib/csv"
+import type { CsvColumn } from "@/lib/csv"
 import { currency, number } from "@/lib/format"
 import type { CategoryReportRow, NetSalesSummary, SalesTrendPoint } from "@/lib/reports"
 
@@ -34,29 +32,26 @@ export function NetSalesReport() {
       .finally(() => setLoading(false))
   }, [range])
 
-  const handleExport = () => {
-    if (!data) return
-
-    const csv = toCsv(data.trend, [
-      { key: "label", label: "Period" },
-      { key: "grossSales", label: "Gross Sales", format: (row) => row.grossSales.toFixed(2) },
-      { key: "discount", label: "Discount", format: (row) => row.discount.toFixed(2) },
-      { key: "netSales", label: "Net Sales", format: (row) => row.netSales.toFixed(2) },
-      { key: "tax", label: "Tax", format: (row) => row.tax.toFixed(2) },
-      { key: "total", label: "Total Revenue", format: (row) => row.total.toFixed(2) },
-      { key: "orders", label: "Orders" },
-    ])
-
-    downloadCsv(`net-sales-${range.from.toISOString().slice(0, 10)}-to-${range.to.toISOString().slice(0, 10)}.csv`, csv)
-  }
+  const exportColumns: CsvColumn<SalesTrendPoint>[] = [
+    { key: "label", label: "Period" },
+    { key: "grossSales", label: "Gross Sales", format: (row) => row.grossSales.toFixed(2) },
+    { key: "discount", label: "Discount", format: (row) => row.discount.toFixed(2) },
+    { key: "netSales", label: "Net Sales", format: (row) => row.netSales.toFixed(2) },
+    { key: "tax", label: "Tax", format: (row) => row.tax.toFixed(2) },
+    { key: "total", label: "Total Revenue", format: (row) => row.total.toFixed(2) },
+    { key: "orders", label: "Orders" },
+  ]
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <DateRangeFilter value={range} onChange={setRange} />
-        <Button variant="outline" size="sm" onClick={handleExport} disabled={!data}>
-          <Download /> Export CSV
-        </Button>
+        <ExportMenu
+          data={data?.trend}
+          columns={exportColumns}
+          filename={`net-sales-${range.from.toISOString().slice(0, 10)}-to-${range.to.toISOString().slice(0, 10)}`}
+          sheetName="Net Sales"
+        />
       </div>
 
       {loading || !data ? (

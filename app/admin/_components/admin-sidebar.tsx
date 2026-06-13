@@ -98,7 +98,7 @@ export function AdminSidebar({ user }: { user: { name: string; email: string; ro
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="POS Terminal">
-                  <Link href="/">
+                  <Link href="/pos">
                     <LayoutGrid />
                     <span>POS Terminal</span>
                   </Link>

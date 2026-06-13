@@ -2,16 +2,14 @@
 
 import * as React from "react"
 
-import { Download } from "lucide-react"
-
 import { DateRangeFilter, defaultDateRange, type DateRangeValue } from "@/components/admin/date-range-filter"
+import { ExportMenu } from "@/components/admin/export-menu"
 import { KpiCard } from "@/components/admin/kpi-card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { downloadCsv, toCsv } from "@/lib/csv"
+import type { CsvColumn } from "@/lib/csv"
 import { currency, number } from "@/lib/format"
-import type { DiscountsReport as DiscountsReportData } from "@/lib/reports"
+import type { CouponUsageRow, DiscountsReport as DiscountsReportData, ProductPromoRow } from "@/lib/reports"
 
 export function DiscountsReport() {
   const [range, setRange] = React.useState<DateRangeValue>(() => defaultDateRange())
@@ -29,30 +27,18 @@ export function DiscountsReport() {
 
   const rangeSuffix = `${range.from.toISOString().slice(0, 10)}-to-${range.to.toISOString().slice(0, 10)}`
 
-  const handleExportCoupons = () => {
-    if (!data) return
+  const couponColumns: CsvColumn<CouponUsageRow>[] = [
+    { key: "code", label: "Coupon Code" },
+    { key: "active", label: "Status", format: (row) => (row.active ? "Active" : "Inactive") },
+    { key: "timesUsed", label: "Times Used" },
+    { key: "totalDiscount", label: "Total Discount", format: (row) => row.totalDiscount.toFixed(2) },
+  ]
 
-    const csv = toCsv(data.coupons, [
-      { key: "code", label: "Coupon Code" },
-      { key: "active", label: "Status", format: (row) => (row.active ? "Active" : "Inactive") },
-      { key: "timesUsed", label: "Times Used" },
-      { key: "totalDiscount", label: "Total Discount", format: (row) => row.totalDiscount.toFixed(2) },
-    ])
-
-    downloadCsv(`coupon-usage-${rangeSuffix}.csv`, csv)
-  }
-
-  const handleExportProducts = () => {
-    if (!data) return
-
-    const csv = toCsv(data.productPromos, [
-      { key: "name", label: "Product" },
-      { key: "timesApplied", label: "Times Applied" },
-      { key: "totalDiscount", label: "Total Discount", format: (row) => row.totalDiscount.toFixed(2) },
-    ])
-
-    downloadCsv(`product-promotions-${rangeSuffix}.csv`, csv)
-  }
+  const productPromoColumns: CsvColumn<ProductPromoRow>[] = [
+    { key: "name", label: "Product" },
+    { key: "timesApplied", label: "Times Applied" },
+    { key: "totalDiscount", label: "Total Discount", format: (row) => row.totalDiscount.toFixed(2) },
+  ]
 
   const couponTotal = data?.coupons.reduce((sum, row) => sum + row.totalDiscount, 0) ?? 0
   const productPromoTotal = data?.productPromos.reduce((sum, row) => sum + row.totalDiscount, 0) ?? 0
@@ -75,9 +61,7 @@ export function DiscountsReport() {
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-medium">Coupon Usage</h2>
-              <Button variant="outline" size="sm" onClick={handleExportCoupons} disabled={data.coupons.length === 0}>
-                <Download /> Export CSV
-              </Button>
+              <ExportMenu data={data.coupons} columns={couponColumns} filename={`coupon-usage-${rangeSuffix}`} sheetName="Coupon Usage" />
             </div>
             <Table>
               <TableHeader>
@@ -116,9 +100,12 @@ export function DiscountsReport() {
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-medium">Product Promotions</h2>
-              <Button variant="outline" size="sm" onClick={handleExportProducts} disabled={data.productPromos.length === 0}>
-                <Download /> Export CSV
-              </Button>
+              <ExportMenu
+                data={data.productPromos}
+                columns={productPromoColumns}
+                filename={`product-promotions-${rangeSuffix}`}
+                sheetName="Product Promotions"
+              />
             </div>
             <Table>
               <TableHeader>

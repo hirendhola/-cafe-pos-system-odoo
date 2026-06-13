@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
   const [customers, total] = await Promise.all([
     prisma.customer.findMany({
       where,
+      include: { _count: { select: { orders: true } } },
       orderBy: { name: "asc" },
       skip: (page - 1) * pageSize,
       take: pageSize,
