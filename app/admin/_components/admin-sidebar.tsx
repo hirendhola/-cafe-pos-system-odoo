@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
-import { Contact, CreditCard, LayoutGrid, MapPinned, Package, Store, Tags, Users, UtensilsCrossed } from "lucide-react"
+import { Contact, CreditCard, LayoutGrid, MapPinned, Package, ReceiptText, Store, Tags, Users, UtensilsCrossed } from "lucide-react"
 
 import { SignOutButton } from "@/components/auth/sign-out-button"
 import {
@@ -70,6 +70,14 @@ export function AdminSidebar({ user }: { user: { name: string; email: string; ro
                   <Link href="/">
                     <LayoutGrid />
                     <span>POS Terminal</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname.startsWith("/admin/orders")} tooltip="Orders">
+                  <Link href="/admin/orders">
+                    <ReceiptText />
+                    <span>Orders</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

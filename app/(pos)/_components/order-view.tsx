@@ -84,6 +84,7 @@ export function OrderView({
   const [updatingCustomer, setUpdatingCustomer] = React.useState(false)
   const [paymentOpen, setPaymentOpen] = React.useState(false)
   const [receiptOrder, setReceiptOrder] = React.useState<ReceiptOrder | null>(null)
+  const [busyItemId, setBusyItemId] = React.useState<string | null>(null)
   const existingOrder = table?.orders[0]
   const [selectedCustomer, setSelectedCustomer] = React.useState<CustomerRecord | null>(existingOrder?.customer ?? null)
 
@@ -166,6 +167,52 @@ export function OrderView({
     }
   }
 
+  const updateOrderItemQty = async (itemId: string, qty: number) => {
+    setBusyItemId(itemId)
+    try {
+      const res = await fetch(`/api/order-items/${itemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ qty }),
+      })
+      const data = await res.json().catch(() => null)
+
+      if (!res.ok) {
+        toast.error(extractErrorMessage(data, "Failed to update item."))
+        return
+      }
+
+      router.refresh()
+    } finally {
+      setBusyItemId(null)
+    }
+  }
+
+  const removeOrderItem = async (itemId: string) => {
+    setBusyItemId(itemId)
+    try {
+      const res = await fetch(`/api/order-items/${itemId}`, { method: "DELETE" })
+      const data = await res.json().catch(() => null)
+
+      if (!res.ok) {
+        toast.error(extractErrorMessage(data, "Failed to remove item."))
+        return
+      }
+
+      router.refresh()
+    } finally {
+      setBusyItemId(null)
+    }
+  }
+
+  const decrementOrderItem = (item: ExistingOrder["items"][number]) => {
+    if (item.qty <= 1) {
+      void removeOrderItem(item.id)
+    } else {
+      void updateOrderItemQty(item.id, item.qty - 1)
+    }
+  }
+
   const handleCustomerSelect = async (customer: CustomerRecord | null) => {
     if (!existingOrder) {
       setSelectedCustomer(customer)
@@ -196,9 +243,8 @@ export function OrderView({
   }
 
   return (
-    <div className="flex h-full overflow-hidden">
-      <div className="flex flex-1 flex-col gap-4 overflow-hidden p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex h-full overflow-auto">
+<div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4">        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between ">
           <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
@@ -229,8 +275,7 @@ export function OrderView({
           </div>
         </div>
 
-        <ScrollArea className="flex-1">
-          {filteredProducts.length === 0 ? (
+<ScrollArea className="min-h-0 flex-1">          {filteredProducts.length === 0 ? (
             <p className="py-12 text-center text-sm text-muted-foreground">No products found.</p>
           ) : (
             <div className="grid grid-cols-2 gap-3 pb-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
@@ -263,8 +308,8 @@ export function OrderView({
         </ScrollArea>
       </div>
 
-      <div className="flex w-96 flex-col overflow-hidden border-l">
-        <div className="border-b p-4">
+<div className="flex min-h-0 w-96 flex-col overflow-auto border-l">        
+  <div className="border-b p-4">
           {table ? (
             <div>
               <div className="text-sm text-muted-foreground">Floor {table.floor.name}</div>
@@ -304,18 +349,49 @@ export function OrderView({
           </div>
         ) : null}
 
-        {existingOrder ? (
+        {existingOrder && existingOrder.items.length > 0 ? (
           <div className="border-b p-4">
             <div className="mb-2 text-sm font-medium">Already sent to kitchen</div>
-            <ul className="flex flex-col gap-1 text-sm">
+            <ul className="flex flex-col gap-2 text-sm">
               {existingOrder.items.map((item) => (
-                <li key={item.id} className="flex items-center justify-between gap-2">
-                  <span className={item.kdsStatus === "COMPLETED" ? "text-muted-foreground line-through" : ""}>
-                    {item.qty} x {item.product.name}
-                  </span>
-                  <Badge variant="outline" className="text-xs">
-                    {KDS_LABELS[item.kdsStatus]}
-                  </Badge>
+                <li key={item.id} className="flex flex-col gap-1 rounded-md border p-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={item.kdsStatus === "COMPLETED" ? "text-muted-foreground line-through" : ""}>
+                      {item.product.name}
+                    </span>
+                    <Badge variant="outline" className="text-xs">
+                      {KDS_LABELS[item.kdsStatus]}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="icon-sm"
+                        variant="outline"
+                        disabled={busyItemId === item.id}
+                        onClick={() => decrementOrderItem(item)}
+                      >
+                        <Minus />
+                      </Button>
+                      <span className="w-6 text-center text-sm">{item.qty}</span>
+                      <Button
+                        size="icon-sm"
+                        variant="outline"
+                        disabled={busyItemId === item.id}
+                        onClick={() => updateOrderItemQty(item.id, item.qty + 1)}
+                      >
+                        <Plus />
+                      </Button>
+                    </div>
+                    <Button
+                      size="icon-sm"
+                      variant="ghost"
+                      disabled={busyItemId === item.id}
+                      onClick={() => void removeOrderItem(item.id)}
+                    >
+                      <Trash2 />
+                    </Button>
+                  </div>
                 </li>
               ))}
             </ul>
