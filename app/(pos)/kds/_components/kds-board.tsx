@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { useKdsEvents } from "@/lib/hooks/use-kds-events"
 import { cn } from "@/lib/utils"
 
 type KdsStatus = "TO_COOK" | "PREPARING" | "COMPLETED"
@@ -35,7 +36,7 @@ const STAGE_LABELS: Record<KdsStatus, string> = {
   COMPLETED: "Completed",
 }
 
-const POLL_INTERVAL_MS = 40000
+const POLL_INTERVAL_MS = 60000
 
 export function KdsBoard({ categories }: { categories: { id: string; name: string }[] }) {
   const [orders, setOrders] = React.useState<KdsOrder[]>([])
@@ -61,6 +62,8 @@ export function KdsBoard({ categories }: { categories: { id: string; name: strin
     const interval = setInterval(fetchTickets, POLL_INTERVAL_MS)
     return () => clearInterval(interval)
   }, [fetchTickets])
+
+  useKdsEvents(React.useCallback(() => fetchTickets(), [fetchTickets]))
 
   const advanceItem = async (item: KdsItem) => {
     const next = STAGE_ORDER[STAGE_ORDER.indexOf(item.kdsStatus) + 1]

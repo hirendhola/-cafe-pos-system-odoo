@@ -5,6 +5,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { OrderStatus } from "@/generated/prisma/enums";
 import { requireUser } from "@/lib/api-helpers";
 import { prisma } from "@/lib/db";
+import { emitKdsUpdate } from "@/lib/events";
 import { recomputeOrderTotals } from "@/lib/pricing";
 
 const ORDER_STATUSES = Object.values(OrderStatus);
@@ -136,6 +137,8 @@ export async function POST(request: NextRequest) {
 
     return recomputeOrderTotals(order.id, tx);
   });
+
+  emitKdsUpdate({ orderId: order.id, tableId: order.tableId });
 
   return NextResponse.json(order, { status: 201 });
 }

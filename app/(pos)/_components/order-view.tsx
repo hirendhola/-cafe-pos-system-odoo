@@ -34,6 +34,7 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { extractErrorMessage } from "@/lib/form-error"
+import { useKdsEvents } from "@/lib/hooks/use-kds-events"
 
 const currency = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -121,6 +122,15 @@ export function OrderView({
   React.useEffect(() => {
     setSelectedCustomer(existingOrder?.customer ?? null)
   }, [table?.id, existingOrder?.id, existingOrder?.customer?.id])
+
+  useKdsEvents(
+    React.useCallback(
+      (payload) => {
+        if (table && payload.tableId === table.id) router.refresh()
+      },
+      [table, router],
+    ),
+  )
 
   const filteredProducts = React.useMemo(() => {
     return products.filter((product) => {
