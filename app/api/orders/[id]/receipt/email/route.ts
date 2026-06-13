@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { requireUser } from "@/lib/api-helpers";
 import { prisma } from "@/lib/db";
+import { renderReceiptPdf } from "@/lib/receipt-pdf";
 import { RECEIPT_FROM_EMAIL, resend } from "@/lib/resend";
 
 const currency = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" });
@@ -66,11 +67,20 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
     </div>
   `;
 
+  const pdf = await renderReceiptPdf(order);
+
   const { data, error } = await resend.emails.send({
     from: RECEIPT_FROM_EMAIL,
     to: [order.customer.email],
     subject: `Receipt — Order ${order.number}`,
     html,
+    attachments: [
+      {
+        filename: `receipt-${order.number}.pdf`,
+        content: pdf,
+        contentType: "application/pdf",
+      },
+    ],
   });
 
   if (error) {
