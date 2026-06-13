@@ -1,19 +1,20 @@
-import { Button } from "@/components/ui/button"
+import { headers } from "next/headers"
 
-export default function Page() {
+import { SignOutButton } from "@/components/auth/sign-out-button"
+import { auth } from "@/lib/auth"
+
+export default async function Page() {
+  const session = await auth.api.getSession({ headers: await headers() })
+
   return (
-    <div className="flex min-h-svh p-6">
-      <div className="flex max-w-md min-w-0 flex-col gap-4 text-sm leading-loose">
-        <div>
-          <h1 className="font-medium">Project ready!</h1>
-          <p>You may now add components and start building.</p>
-          <p>We&apos;ve already added the button component for you.</p>
-          <Button className="mt-2">Button</Button>
-        </div>
-        <div className="font-mono text-xs text-muted-foreground">
-          (Press <kbd>d</kbd> to toggle dark mode)
-        </div>
+    <div className="flex min-h-svh flex-col items-center justify-center gap-4 p-6 text-center">
+      <div>
+        <h1 className="text-2xl font-medium">Welcome, {session?.user.name}</h1>
+        <p className="text-muted-foreground">
+          Signed in as {session?.user.email} ({session?.user.role})
+        </p>
       </div>
+      <SignOutButton />
     </div>
   )
 }
