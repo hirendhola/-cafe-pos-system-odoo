@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 
 const ADMIN_ONLY_PREFIXES = ["/admin"];
+const AUTH_PAGES = ["/login", "/signup"];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -11,6 +12,14 @@ export async function proxy(request: NextRequest) {
   const session = await auth.api.getSession({
     headers: await headers(),
   });
+
+  if (AUTH_PAGES.includes(pathname)) {
+    if (session) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+
+    return NextResponse.next();
+  }
 
   if (!session) {
     const loginUrl = new URL("/login", request.url);
@@ -28,5 +37,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|login|signup|api/auth).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/auth).*)"],
 };
