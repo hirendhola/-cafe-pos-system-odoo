@@ -5,7 +5,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { OrderStatus } from "@/generated/prisma/enums";
 import { requireUser } from "@/lib/api-helpers";
 import { prisma } from "@/lib/db";
-import { computeOrderTotals } from "@/lib/pricing";
+import { recomputeOrderTotals } from "@/lib/pricing";
 
 const ORDER_STATUSES = Object.values(OrderStatus);
 
@@ -134,22 +134,7 @@ export async function POST(request: NextRequest) {
       }),
     });
 
-    const allItems = await tx.orderItem.findMany({
-      where: { orderId: order.id },
-      include: { product: true },
-    });
-
-    const { subtotal, tax, total } = computeOrderTotals(allItems, order.discount);
-
-    return tx.order.update({
-      where: { id: order.id },
-      data: { subtotal, tax, total },
-      include: {
-        items: { include: { product: { include: { category: true } } }, orderBy: { createdAt: "asc" } },
-        table: { include: { floor: true } },
-        customer: true,
-      },
-    });
+    return recomputeOrderTotals(order.id, tx);
   });
 
   return NextResponse.json(order, { status: 201 });

@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
-import { Contact, CreditCard, LayoutGrid, MapPinned, Package, ReceiptText, Store, Tags, Users, UtensilsCrossed } from "lucide-react"
+import { Contact, CreditCard, LayoutGrid, MapPinned, Package, Percent, ReceiptText, Store, Tags, Users, UtensilsCrossed } from "lucide-react"
 
 import { SignOutButton } from "@/components/auth/sign-out-button"
 import {
@@ -114,6 +114,18 @@ export function AdminSidebar({ user }: { user: { name: string; email: string; ro
                     <Link href="/admin/payment-methods">
                       <CreditCard />
                       <span>Payment Methods</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname.startsWith("/admin/discounts")}
+                    tooltip="Coupons & Promotions"
+                  >
+                    <Link href="/admin/discounts">
+                      <Percent />
+                      <span>Coupons & Promotions</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

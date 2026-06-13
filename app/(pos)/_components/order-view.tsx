@@ -4,22 +4,41 @@ import * as React from "react"
 
 import { useRouter } from "next/navigation"
 
-import { CreditCard, Minus, Plus, Search, Send, Trash2, UserRound } from "lucide-react"
+import {
+  CreditCard,
+  Minus,
+  Percent,
+  Plus,
+  Search,
+  Send,
+  Tag,
+  Trash2,
+  UserRound,
+} from "lucide-react"
 import { toast } from "sonner"
 
 import type { CustomerRecord } from "@/components/admin/customer-form-dialog"
 import { CustomerPickerDialog } from "@/components/pos/customer-picker-dialog"
+import { DiscountDialog } from "@/components/pos/discount-dialog"
 import { PaymentDialog } from "@/components/pos/payment-dialog"
 import { ReceiptView, type ReceiptOrder } from "@/components/pos/receipt-view"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { extractErrorMessage } from "@/lib/form-error"
 
-const currency = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" })
+const currency = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+})
 
 type CategoryRecord = { id: string; name: string; color: string }
 
@@ -49,9 +68,14 @@ type ExistingOrder = {
   discount: number
   total: number
   customer: CustomerRecord | null
+  coupon: { code: string } | null
+  discountBreakdown: { label: string; amount: number }[]
   items: {
     id: string
     qty: number
+    unitPrice: number
+    lineDiscount: number
+    promoLabel: string | null
     kdsStatus: KdsStatus
     product: { id: string; name: string }
   }[]
@@ -78,15 +102,21 @@ export function OrderView({
   const router = useRouter()
   const [activeCategory, setActiveCategory] = React.useState("all")
   const [search, setSearch] = React.useState("")
-  const [cart, setCart] = React.useState<{ product: ProductRecord; qty: number }[]>([])
+  const [cart, setCart] = React.useState<
+    { product: ProductRecord; qty: number }[]
+  >([])
   const [sending, setSending] = React.useState(false)
   const [pickerOpen, setPickerOpen] = React.useState(false)
   const [updatingCustomer, setUpdatingCustomer] = React.useState(false)
   const [paymentOpen, setPaymentOpen] = React.useState(false)
-  const [receiptOrder, setReceiptOrder] = React.useState<ReceiptOrder | null>(null)
+  const [discountOpen, setDiscountOpen] = React.useState(false)
+  const [receiptOrder, setReceiptOrder] = React.useState<ReceiptOrder | null>(
+    null
+  )
   const [busyItemId, setBusyItemId] = React.useState<string | null>(null)
   const existingOrder = table?.orders[0]
-  const [selectedCustomer, setSelectedCustomer] = React.useState<CustomerRecord | null>(existingOrder?.customer ?? null)
+  const [selectedCustomer, setSelectedCustomer] =
+    React.useState<CustomerRecord | null>(existingOrder?.customer ?? null)
 
   React.useEffect(() => {
     setSelectedCustomer(existingOrder?.customer ?? null)
@@ -94,8 +124,10 @@ export function OrderView({
 
   const filteredProducts = React.useMemo(() => {
     return products.filter((product) => {
-      if (activeCategory !== "all" && product.categoryId !== activeCategory) return false
-      if (search && !product.name.toLowerCase().includes(search.toLowerCase())) return false
+      if (activeCategory !== "all" && product.categoryId !== activeCategory)
+        return false
+      if (search && !product.name.toLowerCase().includes(search.toLowerCase()))
+        return false
       return true
     })
   }, [products, activeCategory, search])
@@ -104,7 +136,9 @@ export function OrderView({
     setCart((prev) => {
       const existing = prev.find((item) => item.product.id === product.id)
       if (existing) {
-        return prev.map((item) => (item.product.id === product.id ? { ...item, qty: item.qty + 1 } : item))
+        return prev.map((item) =>
+          item.product.id === product.id ? { ...item, qty: item.qty + 1 } : item
+        )
       }
       return [...prev, { product, qty: 1 }]
     })
@@ -113,8 +147,12 @@ export function OrderView({
   const updateQty = (productId: string, delta: number) => {
     setCart((prev) =>
       prev
-        .map((item) => (item.product.id === productId ? { ...item, qty: item.qty + delta } : item))
-        .filter((item) => item.qty > 0),
+        .map((item) =>
+          item.product.id === productId
+            ? { ...item, qty: item.qty + delta }
+            : item
+        )
+        .filter((item) => item.qty > 0)
     )
   }
 
@@ -122,14 +160,22 @@ export function OrderView({
     setCart((prev) => prev.filter((item) => item.product.id !== productId))
   }
 
-  const cartSubtotal = cart.reduce((sum, item) => sum + item.product.price * item.qty, 0)
-  const cartTax = cart.reduce((sum, item) => sum + item.product.price * item.qty * (item.product.tax / 100), 0)
+  const cartSubtotal = cart.reduce(
+    (sum, item) => sum + item.product.price * item.qty,
+    0
+  )
+  const cartTax = cart.reduce(
+    (sum, item) =>
+      sum + item.product.price * item.qty * (item.product.tax / 100),
+    0
+  )
   const cartTotal = cartSubtotal + cartTax
 
   const showOrderTotals = cart.length === 0 && !!existingOrder
   const subtotal = showOrderTotals ? existingOrder!.subtotal : cartSubtotal
   const tax = showOrderTotals ? existingOrder!.tax : cartTax
   const discount = showOrderTotals ? existingOrder!.discount : 0
+  const discountBreakdown = showOrderTotals ? existingOrder!.discountBreakdown : []
   const total = showOrderTotals ? existingOrder!.total : cartTotal
 
   const handlePaid = (order: ReceiptOrder) => {
@@ -148,14 +194,19 @@ export function OrderView({
         body: JSON.stringify({
           tableId: table.id,
           customerId: selectedCustomer?.id ?? undefined,
-          items: cart.map((item) => ({ productId: item.product.id, qty: item.qty })),
+          items: cart.map((item) => ({
+            productId: item.product.id,
+            qty: item.qty,
+          })),
         }),
       })
 
       const data = await res.json().catch(() => null)
 
       if (!res.ok) {
-        toast.error(extractErrorMessage(data, "Failed to send order to kitchen."))
+        toast.error(
+          extractErrorMessage(data, "Failed to send order to kitchen.")
+        )
         return
       }
 
@@ -165,6 +216,11 @@ export function OrderView({
     } finally {
       setSending(false)
     }
+  }
+
+  const handleDiscountChanged = () => {
+    setDiscountOpen(false)
+    router.refresh()
   }
 
   const updateOrderItemQty = async (itemId: string, qty: number) => {
@@ -191,7 +247,9 @@ export function OrderView({
   const removeOrderItem = async (itemId: string) => {
     setBusyItemId(itemId)
     try {
-      const res = await fetch(`/api/order-items/${itemId}`, { method: "DELETE" })
+      const res = await fetch(`/api/order-items/${itemId}`, {
+        method: "DELETE",
+      })
       const data = await res.json().catch(() => null)
 
       if (!res.ok) {
@@ -235,7 +293,9 @@ export function OrderView({
       }
 
       setSelectedCustomer(customer)
-      toast.success(customer ? `Customer set to ${customer.name}.` : "Customer removed.")
+      toast.success(
+        customer ? `Customer set to ${customer.name}.` : "Customer removed."
+      )
       router.refresh()
     } finally {
       setUpdatingCustomer(false)
@@ -244,7 +304,9 @@ export function OrderView({
 
   return (
     <div className="flex h-full overflow-auto">
-<div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4">        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between ">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4">
+        {" "}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
@@ -274,9 +336,12 @@ export function OrderView({
             />
           </div>
         </div>
-
-<ScrollArea className="min-h-0 flex-1">          {filteredProducts.length === 0 ? (
-            <p className="py-12 text-center text-sm text-muted-foreground">No products found.</p>
+        <ScrollArea className="min-h-0 flex-1">
+          {" "}
+          {filteredProducts.length === 0 ? (
+            <p className="py-12 text-center text-sm text-muted-foreground">
+              No products found.
+            </p>
           ) : (
             <div className="grid grid-cols-2 gap-3 pb-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
               {filteredProducts.map((product) => (
@@ -292,14 +357,22 @@ export function OrderView({
                   >
                     {product.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
+                      <img
+                        src={product.imageUrl}
+                        alt={product.name}
+                        className="h-full w-full object-cover"
+                      />
                     ) : (
                       product.name.charAt(0).toUpperCase()
                     )}
                   </div>
                   <div className="flex flex-col gap-0.5 p-2">
-                    <span className="line-clamp-1 text-sm font-medium">{product.name}</span>
-                    <span className="text-xs text-muted-foreground">{currency.format(product.price)}</span>
+                    <span className="line-clamp-1 text-sm font-medium">
+                      {product.name}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {currency.format(product.price)}
+                    </span>
                   </div>
                 </button>
               ))}
@@ -308,11 +381,13 @@ export function OrderView({
         </ScrollArea>
       </div>
 
-<div className="flex min-h-0 w-96 flex-col overflow-auto border-l">        
-  <div className="border-b p-4">
+      <div className="flex min-h-0 w-96 flex-col overflow-auto border-l">
+        <div className="border-b p-4">
           {table ? (
             <div>
-              <div className="text-sm text-muted-foreground">Floor {table.floor.name}</div>
+              <div className="text-sm text-muted-foreground">
+                Floor {table.floor.name}
+              </div>
               <div className="text-lg font-semibold">Table {table.number}</div>
               {existingOrder ? (
                 <Badge variant="secondary" className="mt-1">
@@ -323,7 +398,9 @@ export function OrderView({
           ) : (
             <div>
               <div className="text-lg font-semibold">No table selected</div>
-              <p className="text-sm text-muted-foreground">Pick a table from the top bar to start an order.</p>
+              <p className="text-sm text-muted-foreground">
+                Pick a table from the top bar to start an order.
+              </p>
             </div>
           )}
         </div>
@@ -332,7 +409,12 @@ export function OrderView({
           <div className="border-b p-4">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-sm font-medium">Customer</span>
-              <Button size="sm" variant="outline" disabled={updatingCustomer} onClick={() => setPickerOpen(true)}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={updatingCustomer}
+                onClick={() => setPickerOpen(true)}
+              >
                 <UserRound /> {selectedCustomer ? "Change" : "Add customer"}
               </Button>
             </div>
@@ -340,29 +422,71 @@ export function OrderView({
               <div className="text-sm">
                 <div className="font-medium">{selectedCustomer.name}</div>
                 <div className="text-xs text-muted-foreground">
-                  {selectedCustomer.email ?? selectedCustomer.phone ?? "No contact info"}
+                  {selectedCustomer.email ??
+                    selectedCustomer.phone ??
+                    "No contact info"}
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No customer assigned.</p>
+              <p className="text-sm text-muted-foreground">
+                No customer assigned.
+              </p>
             )}
           </div>
         ) : null}
 
         {existingOrder && existingOrder.items.length > 0 ? (
           <div className="border-b p-4">
-            <div className="mb-2 text-sm font-medium">Already sent to kitchen</div>
+            <div className="mb-2 text-sm font-medium">
+              Already sent to kitchen
+            </div>
             <ul className="flex flex-col gap-2 text-sm">
               {existingOrder.items.map((item) => (
-                <li key={item.id} className="flex flex-col gap-1 rounded-md border p-2">
+                <li
+                  key={item.id}
+                  className="flex flex-col gap-1 rounded-md border p-2"
+                >
                   <div className="flex items-center justify-between gap-2">
-                    <span className={item.kdsStatus === "COMPLETED" ? "text-muted-foreground line-through" : ""}>
+                    <span
+                      className={
+                        item.kdsStatus === "COMPLETED"
+                          ? "text-muted-foreground line-through"
+                          : ""
+                      }
+                    >
                       {item.product.name}
                     </span>
                     <Badge variant="outline" className="text-xs">
                       {KDS_LABELS[item.kdsStatus]}
                     </Badge>
                   </div>
+                  <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                    <span>
+                      {item.qty} x {currency.format(item.unitPrice)}
+                    </span>
+                    {item.lineDiscount > 0 ? (
+                      <span>
+                        <span className="mr-1 line-through">{currency.format(item.unitPrice * item.qty)}</span>
+                        <span className="font-medium text-emerald-600">
+                          {currency.format(item.unitPrice * item.qty - item.lineDiscount)}
+                        </span>
+                      </span>
+                    ) : (
+                      <span className="font-medium text-foreground">
+                        {currency.format(item.unitPrice * item.qty)}
+                      </span>
+                    )}
+                  </div>
+                  {item.promoLabel ? (
+                    <div
+                      className="flex items-center gap-1.5 rounded-sm bg-secondary px-1.5 py-1 text-[11px] font-medium text-emerald-700"
+                      title={item.promoLabel}
+                    >
+                      <Tag className="size-3 shrink-0" />
+                      <span className="min-w-0 truncate">{item.promoLabel}</span>
+                      <span className="ml-auto shrink-0">-{currency.format(item.lineDiscount)}</span>
+                    </div>
+                  ) : null}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1">
                       <Button
@@ -373,12 +497,16 @@ export function OrderView({
                       >
                         <Minus />
                       </Button>
-                      <span className="w-6 text-center text-sm">{item.qty}</span>
+                      <span className="w-6 text-center text-sm">
+                        {item.qty}
+                      </span>
                       <Button
                         size="icon-sm"
                         variant="outline"
                         disabled={busyItemId === item.id}
-                        onClick={() => updateOrderItemQty(item.id, item.qty + 1)}
+                        onClick={() =>
+                          updateOrderItemQty(item.id, item.qty + 1)
+                        }
                       >
                         <Plus />
                       </Button>
@@ -400,28 +528,49 @@ export function OrderView({
 
         <ScrollArea className="flex-1 p-4">
           {cart.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">Tap a product to add it to the order.</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              Tap a product to add it to the order.
+            </p>
           ) : (
             <ul className="flex flex-col gap-3">
               {cart.map((item) => (
-                <li key={item.product.id} className="flex items-center justify-between gap-2">
+                <li
+                  key={item.product.id}
+                  className="flex items-center justify-between gap-2"
+                >
                   <div className="min-w-0 flex-1">
-                    <div className="line-clamp-1 text-sm font-medium">{item.product.name}</div>
-                    <div className="text-xs text-muted-foreground">{currency.format(item.product.price)} each</div>
+                    <div className="line-clamp-1 text-sm font-medium">
+                      {item.product.name}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {currency.format(item.product.price)} each
+                    </div>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Button size="icon-sm" variant="outline" onClick={() => updateQty(item.product.id, -1)}>
+                    <Button
+                      size="icon-sm"
+                      variant="outline"
+                      onClick={() => updateQty(item.product.id, -1)}
+                    >
                       <Minus />
                     </Button>
                     <span className="w-6 text-center text-sm">{item.qty}</span>
-                    <Button size="icon-sm" variant="outline" onClick={() => updateQty(item.product.id, 1)}>
+                    <Button
+                      size="icon-sm"
+                      variant="outline"
+                      onClick={() => updateQty(item.product.id, 1)}
+                    >
                       <Plus />
                     </Button>
                   </div>
                   <div className="w-16 text-right text-sm font-medium">
                     {currency.format(item.product.price * item.qty)}
                   </div>
-                  <Button size="icon-sm" variant="ghost" onClick={() => removeItem(item.product.id)}>
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    onClick={() => removeItem(item.product.id)}
+                  >
                     <Trash2 />
                   </Button>
                 </li>
@@ -436,10 +585,21 @@ export function OrderView({
             <span>{currency.format(subtotal)}</span>
           </div>
           {discount > 0 ? (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Discount</span>
-              <span>-{currency.format(discount)}</span>
-            </div>
+            discountBreakdown.length > 0 ? (
+              discountBreakdown.map((entry) => (
+                <div key={entry.label} className="flex items-center justify-between text-sm">
+                  <span className="max-w-[180px] truncate text-muted-foreground" title={entry.label}>
+                    {entry.label}
+                  </span>
+                  <span className="text-emerald-600">-{currency.format(entry.amount)}</span>
+                </div>
+              ))
+            ) : (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Discount</span>
+                <span className="text-emerald-600">-{currency.format(discount)}</span>
+              </div>
+            )
           ) : null}
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Tax</span>
@@ -450,7 +610,11 @@ export function OrderView({
             <span>Total</span>
             <span>{currency.format(total)}</span>
           </div>
-          <Button className="mt-2" disabled={!table || cart.length === 0 || sending} onClick={handleSendToKitchen}>
+          <Button
+            className="mt-2"
+            disabled={!table || cart.length === 0 || sending}
+            onClick={handleSendToKitchen}
+          >
             <Send /> {sending ? "Sending..." : "Send to Kitchen"}
           </Button>
           {existingOrder ? (
@@ -460,15 +624,28 @@ export function OrderView({
               </p>
             ) : (
               <>
-                <Button
-                  variant="outline"
-                  disabled={existingOrder.total <= 0 || !hasOpenSession}
-                  onClick={() => setPaymentOpen(true)}
-                >
-                  <CreditCard /> Payment
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    disabled={existingOrder.items.length === 0}
+                    onClick={() => setDiscountOpen(true)}
+                  >
+                    <Percent /> Discount
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    disabled={existingOrder.total <= 0 || !hasOpenSession}
+                    onClick={() => setPaymentOpen(true)}
+                  >
+                    <CreditCard /> Payment
+                  </Button>
+                </div>
                 {!hasOpenSession ? (
-                  <p className="text-center text-xs text-muted-foreground">Open a session to take payments.</p>
+                  <p className="text-center text-xs text-muted-foreground">
+                    Open a session to take payments.
+                  </p>
                 ) : null}
               </>
             )
@@ -483,16 +660,31 @@ export function OrderView({
         onSelect={handleCustomerSelect}
       />
 
+      <DiscountDialog
+        open={discountOpen}
+        onOpenChange={setDiscountOpen}
+        orderId={existingOrder?.id ?? ""}
+        appliedCode={existingOrder?.coupon?.code ?? null}
+        onChanged={handleDiscountChanged}
+      />
+
       {existingOrder ? (
         <PaymentDialog
           open={paymentOpen}
           onOpenChange={setPaymentOpen}
-          order={{ id: existingOrder.id, number: existingOrder.number, total: existingOrder.total }}
+          order={{
+            id: existingOrder.id,
+            number: existingOrder.number,
+            total: existingOrder.total,
+          }}
           onPaid={handlePaid}
         />
       ) : null}
 
-      <Dialog open={!!receiptOrder} onOpenChange={(open) => !open && setReceiptOrder(null)}>
+      <Dialog
+        open={!!receiptOrder}
+        onOpenChange={(open) => !open && setReceiptOrder(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Payment received</DialogTitle>

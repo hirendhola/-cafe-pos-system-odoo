@@ -155,9 +155,9 @@ export function ProductFormDialog({
             id="product-form"
             noValidate
             onSubmit={form.handleSubmit(onSubmit)}
-            className="max-h-[65vh] pr-1 overflow-hidden"
+            className="max-h-[65vh] pr-1 overflow-auto"
           >
-            <FieldGroup className="gap-4">
+            <FieldGroup className="gap-4 ">
               <Controller
                 control={form.control}
                 name="name"
