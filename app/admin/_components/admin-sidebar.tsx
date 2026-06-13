@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
-import { LayoutGrid, MapPinned, Package, Store, Tags, Users, UtensilsCrossed } from "lucide-react"
+import { Contact, LayoutGrid, MapPinned, Package, Store, Tags, Users, UtensilsCrossed } from "lucide-react"
 
 import { SignOutButton } from "@/components/auth/sign-out-button"
 import {
@@ -24,6 +24,7 @@ const catalogItems = [
   { title: "Products", url: "/admin/products", icon: Package },
   { title: "Categories", url: "/admin/categories", icon: Tags },
   { title: "Floors & Tables", url: "/admin/floors-tables", icon: MapPinned },
+  { title: "Customers", url: "/admin/customers", icon: Contact },
 ]
 
 export function AdminSidebar({ user }: { user: { name: string; email: string; role: string } }) {
