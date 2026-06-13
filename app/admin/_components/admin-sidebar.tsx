@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
-import { LayoutGrid, MapPinned, Package, Store, Tags, UtensilsCrossed } from "lucide-react"
+import { LayoutGrid, MapPinned, Package, Store, Tags, Users, UtensilsCrossed } from "lucide-react"
 
 import { SignOutButton } from "@/components/auth/sign-out-button"
 import {
@@ -26,7 +26,7 @@ const catalogItems = [
   { title: "Floors & Tables", url: "/admin/floors-tables", icon: MapPinned },
 ]
 
-export function AdminSidebar({ user }: { user: { name: string; email: string } }) {
+export function AdminSidebar({ user }: { user: { name: string; email: string; role: string } }) {
   const pathname = usePathname()
 
   return (
@@ -83,6 +83,23 @@ export function AdminSidebar({ user }: { user: { name: string; email: string } }
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        {user.role === "ADMIN" ? (
+          <SidebarGroup>
+            <SidebarGroupLabel>Administration</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={pathname.startsWith("/admin/users")} tooltip="Users">
+                    <Link href="/admin/users">
+                      <Users />
+                      <span>Users</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ) : null}
       </SidebarContent>
       <SidebarFooter>
         <div className="flex flex-col gap-2 px-2 py-1.5 group-data-[collapsible=icon]:hidden">

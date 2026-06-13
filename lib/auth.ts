@@ -1,4 +1,4 @@
-import { betterAuth } from "better-auth";
+import { APIError, betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 
@@ -36,6 +36,19 @@ export const auth = betterAuth({
           }
 
           return { data: user };
+        },
+      },
+    },
+    session: {
+      create: {
+        before: async (session) => {
+          const user = await prisma.user.findUnique({ where: { id: session.userId } });
+
+          if (user?.archived) {
+            throw new APIError("FORBIDDEN", { message: "This account has been archived." });
+          }
+
+          return { data: session };
         },
       },
     },

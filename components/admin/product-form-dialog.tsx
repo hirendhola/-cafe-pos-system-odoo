@@ -145,7 +145,7 @@ export function ProductFormDialog({
     <>
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>{product ? "Edit product" : "New product"}</DialogTitle>
             <DialogDescription>Products appear on the POS order screen, grouped by category.</DialogDescription>
@@ -154,7 +154,7 @@ export function ProductFormDialog({
             id="product-form"
             noValidate
             onSubmit={form.handleSubmit(onSubmit)}
-            className="max-h-[65vh] overflow-y-auto pr-1"
+            className="max-h-[65vh] pr-1 overflow-hidden"
           >
             <FieldGroup className="gap-4">
               <Controller
