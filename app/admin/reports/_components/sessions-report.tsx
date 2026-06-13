@@ -2,14 +2,15 @@
 
 import * as React from "react"
 
-import { ArrowDownRight, ArrowUpRight, CheckCircle2, Download } from "lucide-react"
+import { ArrowDownRight, ArrowUpRight, CheckCircle2 } from "lucide-react"
 
 import { CloseoutReportView } from "@/components/admin/closeout-report-view"
+import { ExportMenu } from "@/components/admin/export-menu"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { downloadCsv, toCsv } from "@/lib/csv"
+import type { CsvColumn } from "@/lib/csv"
 import { currency, number } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
@@ -64,43 +65,35 @@ export function SessionsReport() {
       .finally(() => setLoading(false))
   }, [])
 
-  const handleExport = () => {
-    if (!sessions) return
-
-    const csv = toCsv(sessions, [
-      { key: "openedAt", label: "Opened At", format: (row) => new Date(row.openedAt).toLocaleString("en-IN") },
-      { key: "openedBy", label: "Opened By" },
-      {
-        key: "closedAt",
-        label: "Closed At",
-        format: (row) => (row.closedAt ? new Date(row.closedAt).toLocaleString("en-IN") : ""),
-      },
-      { key: "closedBy", label: "Closed By", format: (row) => row.closedBy ?? "" },
-      { key: "openingAmount", label: "Opening Amount", format: (row) => row.openingAmount.toFixed(2) },
-      {
-        key: "closingAmount",
-        label: "Closing Amount",
-        format: (row) => (row.closingAmount !== null ? row.closingAmount.toFixed(2) : ""),
-      },
-      { key: "expectedCash", label: "Expected Cash", format: (row) => row.expectedCash.toFixed(2) },
-      { key: "variance", label: "Variance", format: (row) => (row.variance !== null ? row.variance.toFixed(2) : "") },
-      { key: "cashSales", label: "Cash Sales", format: (row) => row.cashSales.toFixed(2) },
-      { key: "cardSales", label: "Card Sales", format: (row) => row.cardSales.toFixed(2) },
-      { key: "upiSales", label: "UPI Sales", format: (row) => row.upiSales.toFixed(2) },
-      { key: "ordersCount", label: "Orders" },
-      { key: "totalRevenue", label: "Total Revenue", format: (row) => row.totalRevenue.toFixed(2) },
-    ])
-
-    downloadCsv(`sessions-${new Date().toISOString().slice(0, 10)}.csv`, csv)
-  }
+  const exportColumns: CsvColumn<SessionRow>[] = [
+    { key: "openedAt", label: "Opened At", format: (row) => new Date(row.openedAt).toLocaleString("en-IN") },
+    { key: "openedBy", label: "Opened By" },
+    {
+      key: "closedAt",
+      label: "Closed At",
+      format: (row) => (row.closedAt ? new Date(row.closedAt).toLocaleString("en-IN") : ""),
+    },
+    { key: "closedBy", label: "Closed By", format: (row) => row.closedBy ?? "" },
+    { key: "openingAmount", label: "Opening Amount", format: (row) => row.openingAmount.toFixed(2) },
+    {
+      key: "closingAmount",
+      label: "Closing Amount",
+      format: (row) => (row.closingAmount !== null ? row.closingAmount.toFixed(2) : ""),
+    },
+    { key: "expectedCash", label: "Expected Cash", format: (row) => row.expectedCash.toFixed(2) },
+    { key: "variance", label: "Variance", format: (row) => (row.variance !== null ? row.variance.toFixed(2) : "") },
+    { key: "cashSales", label: "Cash Sales", format: (row) => row.cashSales.toFixed(2) },
+    { key: "cardSales", label: "Card Sales", format: (row) => row.cardSales.toFixed(2) },
+    { key: "upiSales", label: "UPI Sales", format: (row) => row.upiSales.toFixed(2) },
+    { key: "ordersCount", label: "Orders" },
+    { key: "totalRevenue", label: "Total Revenue", format: (row) => row.totalRevenue.toFixed(2) },
+  ]
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">Most recent 50 sessions, newest first.</p>
-        <Button variant="outline" size="sm" onClick={handleExport} disabled={!sessions || sessions.length === 0}>
-          <Download /> Export CSV
-        </Button>
+        <ExportMenu data={sessions} columns={exportColumns} filename={`sessions-${new Date().toISOString().slice(0, 10)}`} sheetName="Sessions" />
       </div>
 
       {loading || !sessions ? (
