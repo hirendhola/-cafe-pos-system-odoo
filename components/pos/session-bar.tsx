@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { Wallet } from "lucide-react"
 import { toast } from "sonner"
 
+import { CloseoutReportView } from "@/components/admin/closeout-report-view"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -64,6 +65,8 @@ export function SessionBar() {
   const [closingAmount, setClosingAmount] = React.useState("")
   const [submitting, setSubmitting] = React.useState(false)
   const [summary, setSummary] = React.useState<ClosingSummary | null>(null)
+  const [closedSessionId, setClosedSessionId] = React.useState<string | null>(null)
+  const [closeoutOpen, setCloseoutOpen] = React.useState(false)
   const [expected, setExpected] = React.useState<ExpectedCashPreview | null>(null)
   const [expectedLoading, setExpectedLoading] = React.useState(false)
 
@@ -138,6 +141,7 @@ export function SessionBar() {
       setCloseDialogOpen(false)
       setClosingAmount("")
       setSummary(data.summary)
+      setClosedSessionId(current.id)
       setCurrent(null)
       router.refresh()
     } finally {
@@ -285,8 +289,18 @@ export function SessionBar() {
             </div>
           ) : null}
           <DialogFooter>
+            <Button variant="outline" onClick={() => setCloseoutOpen(true)}>
+              View full close-out report
+            </Button>
             <Button onClick={() => setSummary(null)}>Done</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={closeoutOpen} onOpenChange={setCloseoutOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+          <DialogTitle className="sr-only">Daily Close-out Report</DialogTitle>
+          {closedSessionId ? <CloseoutReportView sessionId={closedSessionId} /> : null}
         </DialogContent>
       </Dialog>
     </>

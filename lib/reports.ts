@@ -10,12 +10,12 @@ export type OrderFilter = {
   sessionId?: string;
 };
 
-const paidOrderInclude = {
+export const paidOrderInclude = {
   table: { include: { floor: true } },
   customer: true,
   createdBy: { select: { id: true, name: true } },
   paidBy: { select: { id: true, name: true } },
-  coupon: { select: { id: true, code: true } },
+  coupon: { select: { id: true, code: true, active: true } },
   items: {
     include: {
       product: { include: { category: true } },
@@ -307,6 +307,7 @@ export function getItemReport(
 export type CouponUsageRow = {
   couponId: string;
   code: string;
+  active: boolean;
   timesUsed: number;
   totalDiscount: number;
 };
@@ -334,7 +335,7 @@ export function getDiscountsReport(orders: PaidOrder[]): DiscountsReport {
     if (order.coupon) {
       let row = couponRows.get(order.coupon.id);
       if (!row) {
-        row = { couponId: order.coupon.id, code: order.coupon.code, timesUsed: 0, totalDiscount: 0 };
+        row = { couponId: order.coupon.id, code: order.coupon.code, active: order.coupon.active, timesUsed: 0, totalDiscount: 0 };
         couponRows.set(order.coupon.id, row);
       }
       row.timesUsed += 1;

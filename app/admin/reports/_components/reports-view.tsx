@@ -1,14 +1,12 @@
 "use client"
 
+import { DiscountsReport } from "./discounts-report"
 import { EmployeesReport } from "./employees-report"
 import { ItemsReport } from "./items-report"
 import { NetSalesReport } from "./net-sales-report"
 import { OrdersReport } from "./orders-report"
+import { SessionsReport } from "./sessions-report"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-
-function ComingSoon({ label }: { label: string }) {
-  return <p className="py-12 text-center text-sm text-muted-foreground">The {label} report is coming up next.</p>
-}
 
 export function ReportsView({
   employees,
@@ -41,10 +39,10 @@ export function ReportsView({
         <ItemsReport categories={categories} />
       </TabsContent>
       <TabsContent value="discounts" className="mt-4">
-        <ComingSoon label="Discounts & Promotions" />
+        <DiscountsReport />
       </TabsContent>
       <TabsContent value="sessions" className="mt-4">
-        <ComingSoon label="Sessions" />
+        <SessionsReport />
       </TabsContent>
     </Tabs>
   )
