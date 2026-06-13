@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 
 const createOrderSchema = z.object({
   tableId: z.string().min(1).optional(),
+  customerId: z.string().min(1).optional().nullable(),
   items: z
     .array(
       z.object({
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { tableId, items } = parsed.data;
+  const { tableId, customerId, items } = parsed.data;
 
   const products = await prisma.product.findMany({
     where: { id: { in: items.map((item) => item.productId) } },
@@ -50,9 +51,12 @@ export async function POST(request: NextRequest) {
         data: {
           number: `ORD-${String(count + 1).padStart(4, "0")}`,
           tableId,
+          customerId: customerId ?? undefined,
           status: "DRAFT",
         },
       });
+    } else if (customerId !== undefined && customerId !== order.customerId) {
+      order = await tx.order.update({ where: { id: order.id }, data: { customerId } });
     }
 
     await tx.orderItem.createMany({
@@ -86,6 +90,7 @@ export async function POST(request: NextRequest) {
       include: {
         items: { include: { product: { include: { category: true } } }, orderBy: { createdAt: "asc" } },
         table: { include: { floor: true } },
+        customer: true,
       },
     });
   });
