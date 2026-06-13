@@ -16,27 +16,67 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { extractErrorMessage } from "@/lib/form-error"
 
+const PAGE_SIZE = 20
+
 type CustomerWithCount = CustomerRecord & { _count: { orders: number }; createdAt: string }
 
-export function CustomersView({ initialCustomers }: { initialCustomers: CustomerWithCount[] }) {
+export function CustomersView({
+  initialCustomers,
+  initialCustomersTotal,
+}: {
+  initialCustomers: CustomerWithCount[]
+  initialCustomersTotal: number
+}) {
   const [customers, setCustomers] = React.useState(initialCustomers)
+  const [total, setTotal] = React.useState(initialCustomersTotal)
   const [editing, setEditing] = React.useState<CustomerWithCount | null>(null)
+  const [loading, setLoading] = React.useState(false)
   const [search, setSearch] = React.useState("")
+  const [debouncedSearch, setDebouncedSearch] = React.useState("")
+  const [page, setPage] = React.useState(1)
 
-  const filtered = React.useMemo(() => {
-    const term = search.trim().toLowerCase()
-    if (!term) return customers
+  React.useEffect(() => {
+    const timeout = setTimeout(() => {
+      setDebouncedSearch(search.trim())
+      setPage(1)
+    }, 300)
+    return () => clearTimeout(timeout)
+  }, [search])
 
-    return customers.filter(
-      (customer) =>
-        customer.name.toLowerCase().includes(term) ||
-        customer.email?.toLowerCase().includes(term) ||
-        customer.phone?.toLowerCase().includes(term),
-    )
-  }, [customers, search])
+  const fetchCustomers = React.useCallback(() => {
+    const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) })
+    if (debouncedSearch) params.set("q", debouncedSearch)
+
+    setLoading(true)
+    return fetch(`/api/customers?${params.toString()}`)
+      .then((res) => res.json())
+      .then((data: { customers: CustomerWithCount[]; total: number }) => {
+        setCustomers(data.customers)
+        setTotal(data.total)
+      })
+      .finally(() => setLoading(false))
+  }, [debouncedSearch, page])
+
+  const isFirstFetch = React.useRef(true)
+  React.useEffect(() => {
+    if (isFirstFetch.current) {
+      isFirstFetch.current = false
+      return
+    }
+    fetchCustomers()
+  }, [fetchCustomers])
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   const handleDelete = async (customer: CustomerWithCount) => {
     if (!confirm(`Delete customer "${customer.name}"? This cannot be undone.`)) return
@@ -49,8 +89,8 @@ export function CustomersView({ initialCustomers }: { initialCustomers: Customer
       return
     }
 
-    setCustomers((prev) => prev.filter((c) => c.id !== customer.id))
     toast.success("Customer deleted.")
+    fetchCustomers()
   }
 
   return (
@@ -65,13 +105,7 @@ export function CustomersView({ initialCustomers }: { initialCustomers: Customer
                 <Plus /> Add customer
               </Button>
             }
-            onSaved={(saved) =>
-              setCustomers((prev) =>
-                [...prev, { ...saved, _count: { orders: 0 }, createdAt: new Date().toISOString() }].sort((a, b) =>
-                  a.name.localeCompare(b.name),
-                ),
-              )
-            }
+            onSaved={() => fetchCustomers()}
           />
         </CardAction>
       </CardHeader>
@@ -97,14 +131,20 @@ export function CustomersView({ initialCustomers }: { initialCustomers: Customer
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.length === 0 ? (
+            {loading ? (
               <TableRow>
                 <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  {customers.length === 0 ? "No customers yet." : "No customers match your search."}
+                  Loading...
+                </TableCell>
+              </TableRow>
+            ) : customers.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                  No customers found.
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((customer) => (
+              customers.map((customer) => (
                 <TableRow key={customer.id}>
                   <TableCell className="font-medium">
                     <Link href={`/admin/customers/${customer.id}`} className="hover:underline">
@@ -140,6 +180,38 @@ export function CustomersView({ initialCustomers }: { initialCustomers: Customer
             )}
           </TableBody>
         </Table>
+
+        {totalPages > 1 ? (
+          <Pagination className="mt-4">
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    if (page > 1) setPage(page - 1)
+                  }}
+                  className={page <= 1 ? "pointer-events-none opacity-50" : undefined}
+                />
+              </PaginationItem>
+              <PaginationItem>
+                <span className="px-2 text-sm text-muted-foreground">
+                  Page {page} of {totalPages}
+                </span>
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    if (page < totalPages) setPage(page + 1)
+                  }}
+                  className={page >= totalPages ? "pointer-events-none opacity-50" : undefined}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        ) : null}
       </CardContent>
 
       {editing ? (
@@ -147,9 +219,9 @@ export function CustomersView({ initialCustomers }: { initialCustomers: Customer
           customer={editing}
           open={!!editing}
           onOpenChange={(open) => !open && setEditing(null)}
-          onSaved={(saved) => {
-            setCustomers((prev) => prev.map((c) => (c.id === saved.id ? { ...c, ...saved } : c)))
+          onSaved={() => {
             setEditing(null)
+            fetchCustomers()
           }}
         />
       ) : null}
