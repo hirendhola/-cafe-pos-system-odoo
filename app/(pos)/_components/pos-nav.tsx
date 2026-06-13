@@ -5,7 +5,7 @@ import * as React from "react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
 
-import { LayoutGrid, ShieldCheck, Table2, UtensilsCrossed } from "lucide-react"
+import { LayoutGrid, ReceiptText, ShieldCheck, Table2, UtensilsCrossed } from "lucide-react"
 
 import { FloorTablePopup, type FloorWithTables } from "@/app/(pos)/_components/floor-table-popup"
 import { SignOutButton } from "@/components/auth/sign-out-button"
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button"
 const navLinks = [
   { href: "/", label: "Order View", icon: LayoutGrid },
   { href: "/kds", label: "Kitchen Display", icon: UtensilsCrossed },
+  { href: "/orders", label: "Orders", icon: ReceiptText },
 ]
 
 export function PosNav({

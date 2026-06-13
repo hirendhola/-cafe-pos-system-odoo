@@ -1,8 +1,67 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
+import { Prisma } from "@/generated/prisma/client";
+import { OrderStatus } from "@/generated/prisma/enums";
 import { requireUser } from "@/lib/api-helpers";
 import { prisma } from "@/lib/db";
+import { computeOrderTotals } from "@/lib/pricing";
+
+const ORDER_STATUSES = Object.values(OrderStatus);
+
+export async function GET(request: NextRequest) {
+  const { response } = await requireUser();
+  if (response) return response;
+
+  const { searchParams } = new URL(request.url);
+  const status = searchParams.get("status");
+  const q = searchParams.get("q")?.trim();
+  const from = searchParams.get("from");
+  const to = searchParams.get("to");
+  const sessionId = searchParams.get("sessionId");
+  const employeeId = searchParams.get("employeeId");
+  const page = Math.max(1, Number(searchParams.get("page")) || 1);
+  const pageSize = Math.min(100, Math.max(1, Number(searchParams.get("pageSize")) || 20));
+
+  const where: Prisma.OrderWhereInput = {};
+
+  if (status && (ORDER_STATUSES as string[]).includes(status)) {
+    where.status = status as OrderStatus;
+  }
+
+  if (sessionId) where.sessionId = sessionId;
+  if (employeeId) where.createdById = employeeId;
+
+  if (from || to) {
+    where.createdAt = {};
+    if (from) where.createdAt.gte = new Date(from);
+    if (to) where.createdAt.lte = new Date(to);
+  }
+
+  if (q) {
+    where.OR = [
+      { number: { contains: q, mode: "insensitive" } },
+      { customer: { name: { contains: q, mode: "insensitive" } } },
+    ];
+  }
+
+  const [orders, total] = await Promise.all([
+    prisma.order.findMany({
+      where,
+      include: {
+        table: { include: { floor: true } },
+        customer: true,
+        createdBy: { select: { name: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.order.count({ where }),
+  ]);
+
+  return NextResponse.json({ orders, total });
+}
 
 const createOrderSchema = z.object({
   tableId: z.string().min(1).optional(),
@@ -80,12 +139,7 @@ export async function POST(request: NextRequest) {
       include: { product: true },
     });
 
-    const subtotal = allItems.reduce((sum, item) => sum + item.unitPrice * item.qty - item.lineDiscount, 0);
-    const tax = allItems.reduce(
-      (sum, item) => sum + (item.unitPrice * item.qty - item.lineDiscount) * (item.product.tax / 100),
-      0,
-    );
-    const total = subtotal + tax - order.discount;
+    const { subtotal, tax, total } = computeOrderTotals(allItems, order.discount);
 
     return tx.order.update({
       where: { id: order.id },
