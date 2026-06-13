@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { extractErrorMessage } from "@/lib/form-error"
+import { useKdsEvents } from "@/lib/hooks/use-kds-events"
 
 const currency = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" })
 
@@ -81,6 +82,15 @@ export function OrderDetailView({
   const [busyItemId, setBusyItemId] = React.useState<string | null>(null)
   const [deleting, setDeleting] = React.useState(false)
   const [cancelling, setCancelling] = React.useState(false)
+
+  useKdsEvents(
+    React.useCallback(
+      (payload) => {
+        if (payload.orderId === order.id) router.refresh()
+      },
+      [order.id, router],
+    ),
+  )
 
   const updateItemQty = async (itemId: string, qty: number) => {
     setBusyItemId(itemId)

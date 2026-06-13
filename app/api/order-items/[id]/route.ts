@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { requireUser } from "@/lib/api-helpers";
 import { prisma } from "@/lib/db";
+import { emitKdsUpdate } from "@/lib/events";
 import { recomputeOrderTotals } from "@/lib/pricing";
 
 const updateSchema = z
@@ -48,6 +49,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   await prisma.orderItem.update({ where: { id }, data });
 
+  emitKdsUpdate({ orderId: item.orderId, tableId: item.order.tableId });
+
   if (parsed.data.qty !== undefined) {
     const updatedOrder = await recomputeOrderTotals(item.orderId);
     return NextResponse.json(updatedOrder);
@@ -73,6 +76,8 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
   }
 
   await prisma.orderItem.delete({ where: { id } });
+
+  emitKdsUpdate({ orderId: item.orderId, tableId: item.order.tableId });
 
   const updatedOrder = await recomputeOrderTotals(item.orderId);
   return NextResponse.json(updatedOrder);
