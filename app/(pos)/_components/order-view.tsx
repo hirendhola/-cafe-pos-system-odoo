@@ -4,13 +4,16 @@ import * as React from "react"
 
 import { useRouter } from "next/navigation"
 
-import { Minus, Plus, Search, Send, Trash2, UserRound } from "lucide-react"
+import { CreditCard, Minus, Plus, Search, Send, Trash2, UserRound } from "lucide-react"
 import { toast } from "sonner"
 
 import type { CustomerRecord } from "@/components/admin/customer-form-dialog"
 import { CustomerPickerDialog } from "@/components/pos/customer-picker-dialog"
+import { PaymentDialog } from "@/components/pos/payment-dialog"
+import { ReceiptView, type ReceiptOrder } from "@/components/pos/receipt-view"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
@@ -41,6 +44,9 @@ const KDS_LABELS: Record<KdsStatus, string> = {
 type ExistingOrder = {
   id: string
   number: string
+  subtotal: number
+  tax: number
+  discount: number
   total: number
   customer: CustomerRecord | null
   items: {
@@ -74,6 +80,8 @@ export function OrderView({
   const [sending, setSending] = React.useState(false)
   const [pickerOpen, setPickerOpen] = React.useState(false)
   const [updatingCustomer, setUpdatingCustomer] = React.useState(false)
+  const [paymentOpen, setPaymentOpen] = React.useState(false)
+  const [receiptOrder, setReceiptOrder] = React.useState<ReceiptOrder | null>(null)
   const existingOrder = table?.orders[0]
   const [selectedCustomer, setSelectedCustomer] = React.useState<CustomerRecord | null>(existingOrder?.customer ?? null)
 
@@ -111,9 +119,20 @@ export function OrderView({
     setCart((prev) => prev.filter((item) => item.product.id !== productId))
   }
 
-  const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.qty, 0)
-  const tax = cart.reduce((sum, item) => sum + item.product.price * item.qty * (item.product.tax / 100), 0)
-  const total = subtotal + tax
+  const cartSubtotal = cart.reduce((sum, item) => sum + item.product.price * item.qty, 0)
+  const cartTax = cart.reduce((sum, item) => sum + item.product.price * item.qty * (item.product.tax / 100), 0)
+  const cartTotal = cartSubtotal + cartTax
+
+  const showOrderTotals = cart.length === 0 && !!existingOrder
+  const subtotal = showOrderTotals ? existingOrder!.subtotal : cartSubtotal
+  const tax = showOrderTotals ? existingOrder!.tax : cartTax
+  const discount = showOrderTotals ? existingOrder!.discount : 0
+  const total = showOrderTotals ? existingOrder!.total : cartTotal
+
+  const handlePaid = (order: ReceiptOrder) => {
+    setReceiptOrder(order)
+    router.refresh()
+  }
 
   const handleSendToKitchen = async () => {
     if (!table || cart.length === 0) return
@@ -338,6 +357,12 @@ export function OrderView({
             <span className="text-muted-foreground">Subtotal</span>
             <span>{currency.format(subtotal)}</span>
           </div>
+          {discount > 0 ? (
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Discount</span>
+              <span>-{currency.format(discount)}</span>
+            </div>
+          ) : null}
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Tax</span>
             <span>{currency.format(tax)}</span>
@@ -350,6 +375,17 @@ export function OrderView({
           <Button className="mt-2" disabled={!table || cart.length === 0 || sending} onClick={handleSendToKitchen}>
             <Send /> {sending ? "Sending..." : "Send to Kitchen"}
           </Button>
+          {existingOrder ? (
+            cart.length > 0 ? (
+              <p className="text-center text-xs text-muted-foreground">
+                Send pending items to kitchen before checkout.
+              </p>
+            ) : (
+              <Button variant="outline" disabled={existingOrder.total <= 0} onClick={() => setPaymentOpen(true)}>
+                <CreditCard /> Payment
+              </Button>
+            )
+          ) : null}
         </div>
       </div>
 
@@ -359,6 +395,24 @@ export function OrderView({
         value={selectedCustomer}
         onSelect={handleCustomerSelect}
       />
+
+      {existingOrder ? (
+        <PaymentDialog
+          open={paymentOpen}
+          onOpenChange={setPaymentOpen}
+          order={{ id: existingOrder.id, number: existingOrder.number, total: existingOrder.total }}
+          onPaid={handlePaid}
+        />
+      ) : null}
+
+      <Dialog open={!!receiptOrder} onOpenChange={(open) => !open && setReceiptOrder(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Payment received</DialogTitle>
+          </DialogHeader>
+          {receiptOrder ? <ReceiptView order={receiptOrder} /> : null}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

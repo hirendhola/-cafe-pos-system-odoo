@@ -34,6 +34,10 @@ model User {
   accounts    Account[]
   posSessions PosSession[]
 
+  closedPosSessions PosSession[] @relation("PosSessionClosedBy")
+  createdOrders     Order[]      @relation("OrderCreatedBy")
+  paidOrders        Order[]      @relation("OrderPaidBy")
+
   @@map("user")
 }
 
@@ -258,9 +262,13 @@ model PosSession {
   closedAt      DateTime?
   openingAmount Float     @default(0)
   closingAmount Float?
+  expectedCash  Float?
 
   openedById String
   openedBy   User   @relation(fields: [openedById], references: [id])
+
+  closedById String?
+  closedBy   User?   @relation("PosSessionClosedBy", fields: [closedById], references: [id])
 
   orders Order[]
 
@@ -278,15 +286,17 @@ enum OrderStatus {
 }
 
 model Order {
-  id            String      @id @default(cuid())
-  number        String      @unique
-  status        OrderStatus @default(DRAFT)
-  subtotal      Float       @default(0)
-  tax           Float       @default(0)
-  discount      Float       @default(0)
-  total         Float       @default(0)
-  paymentMethod String?
-  paymentRef    String?
+  id             String       @id @default(cuid())
+  number         String       @unique
+  status         OrderStatus  @default(DRAFT)
+  subtotal       Float        @default(0)
+  tax            Float        @default(0)
+  discount       Float        @default(0)
+  total          Float        @default(0)
+  paymentType    PaymentType?
+  paymentRef     String?
+  amountTendered Float?
+  changeDue      Float?
 
   tableId String?
   table   Table?  @relation(fields: [tableId], references: [id])
@@ -299,6 +309,15 @@ model Order {
 
   couponId String?
   coupon   Coupon? @relation(fields: [couponId], references: [id])
+
+  createdById String?
+  createdBy   User?   @relation("OrderCreatedBy", fields: [createdById], references: [id])
+
+  paidById String?
+  paidBy   User?   @relation("OrderPaidBy", fields: [paidById], references: [id])
+  paidAt   DateTime?
+
+  cancelledAt DateTime?
 
   items OrderItem[]
 
