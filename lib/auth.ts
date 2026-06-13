@@ -25,5 +25,20 @@ export const auth = betterAuth({
       },
     },
   },
+  databaseHooks: {
+    user: {
+      create: {
+        before: async (user) => {
+          const userCount = await prisma.user.count();
+
+          if (userCount === 0) {
+            return { data: { ...user, role: "ADMIN" } };
+          }
+
+          return { data: user };
+        },
+      },
+    },
+  },
   plugins: [nextCookies()],
 });
