@@ -3,10 +3,10 @@ import { prisma } from "@/lib/db"
 import { ReportsView } from "./_components/reports-view"
 
 export default async function AdminReportsPage() {
-  const employees = await prisma.user.findMany({
-    select: { id: true, name: true },
-    orderBy: { name: "asc" },
-  })
+  const [employees, categories] = await Promise.all([
+    prisma.user.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    prisma.category.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+  ])
 
   return (
     <div className="flex flex-col gap-4">
@@ -15,7 +15,7 @@ export default async function AdminReportsPage() {
         <p className="text-sm text-muted-foreground">Sales, orders, employee, item and discount reporting.</p>
       </div>
 
-      <ReportsView employees={employees} />
+      <ReportsView employees={employees} categories={categories} />
     </div>
   )
 }
