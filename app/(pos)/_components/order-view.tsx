@@ -31,7 +31,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { extractErrorMessage } from "@/lib/form-error"
 import { useKdsEvents } from "@/lib/hooks/use-kds-events"
@@ -40,6 +48,15 @@ const currency = new Intl.NumberFormat("en-IN", {
   style: "currency",
   currency: "INR",
 })
+
+const PRODUCTS_PAGE_SIZE = 20
+
+const SORT_OPTIONS = [
+  { value: "name_asc", label: "Name (A-Z)" },
+  { value: "name_desc", label: "Name (Z-A)" },
+  { value: "price_asc", label: "Price (low to high)" },
+  { value: "price_desc", label: "Price (high to low)" },
+] as const
 
 type CategoryRecord = { id: string; name: string; color: string }
 
@@ -91,18 +108,25 @@ type SelectedTable = {
 
 export function OrderView({
   categories,
-  products,
+  initialProducts,
+  initialProductsTotal,
   table,
   hasOpenSession,
 }: {
   categories: CategoryRecord[]
-  products: ProductRecord[]
+  initialProducts: ProductRecord[]
+  initialProductsTotal: number
   table: SelectedTable
   hasOpenSession: boolean
 }) {
   const router = useRouter()
   const [activeCategory, setActiveCategory] = React.useState("all")
   const [search, setSearch] = React.useState("")
+  const [sort, setSort] = React.useState<string>("name_asc")
+  const [products, setProducts] = React.useState(initialProducts)
+  const [productsTotal, setProductsTotal] = React.useState(initialProductsTotal)
+  const [productsPage, setProductsPage] = React.useState(1)
+  const [productsLoading, setProductsLoading] = React.useState(false)
   const [cart, setCart] = React.useState<
     { product: ProductRecord; qty: number }[]
   >([])
@@ -132,15 +156,53 @@ export function OrderView({
     ),
   )
 
-  const filteredProducts = React.useMemo(() => {
-    return products.filter((product) => {
-      if (activeCategory !== "all" && product.categoryId !== activeCategory)
-        return false
-      if (search && !product.name.toLowerCase().includes(search.toLowerCase()))
-        return false
-      return true
+  const [debouncedSearch, setDebouncedSearch] = React.useState("")
+
+  React.useEffect(() => {
+    const timeout = setTimeout(() => {
+      setDebouncedSearch(search.trim())
+      setProductsPage(1)
+    }, 300)
+    return () => clearTimeout(timeout)
+  }, [search])
+
+  const handleCategoryChange = (categoryId: string) => {
+    setActiveCategory(categoryId)
+    setProductsPage(1)
+  }
+
+  const handleSortChange = (value: string) => {
+    setSort(value)
+    setProductsPage(1)
+  }
+
+  const isFirstProductsFetch = React.useRef(true)
+  React.useEffect(() => {
+    if (isFirstProductsFetch.current) {
+      isFirstProductsFetch.current = false
+      return
+    }
+
+    const params = new URLSearchParams({
+      active: "true",
+      sort,
+      page: String(productsPage),
+      pageSize: String(PRODUCTS_PAGE_SIZE),
     })
-  }, [products, activeCategory, search])
+    if (activeCategory !== "all") params.set("categoryId", activeCategory)
+    if (debouncedSearch) params.set("q", debouncedSearch)
+
+    setProductsLoading(true)
+    fetch(`/api/products?${params.toString()}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setProducts(data.products)
+        setProductsTotal(data.total)
+      })
+      .finally(() => setProductsLoading(false))
+  }, [activeCategory, debouncedSearch, sort, productsPage])
+
+  const productsTotalPages = Math.max(1, Math.ceil(productsTotal / PRODUCTS_PAGE_SIZE))
 
   const addToCart = (product: ProductRecord) => {
     setCart((prev) => {
@@ -321,7 +383,7 @@ export function OrderView({
             <Button
               size="sm"
               variant={activeCategory === "all" ? "default" : "outline"}
-              onClick={() => setActiveCategory("all")}
+              onClick={() => handleCategoryChange("all")}
             >
               All
             </Button>
@@ -330,31 +392,45 @@ export function OrderView({
                 key={category.id}
                 size="sm"
                 variant={activeCategory === category.id ? "default" : "outline"}
-                onClick={() => setActiveCategory(category.id)}
+                onClick={() => handleCategoryChange(category.id)}
               >
                 {category.name}
               </Button>
             ))}
           </div>
-          <div className="relative sm:w-64">
-            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search products..."
-              className="pl-8"
-            />
+          <div className="flex gap-2">
+            <div className="relative sm:w-64">
+              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search products..."
+                className="pl-8"
+              />
+            </div>
+            <Select value={sort} onValueChange={handleSortChange}>
+              <SelectTrigger className="w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SORT_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <ScrollArea className="min-h-0 flex-1">
           {" "}
-          {filteredProducts.length === 0 ? (
+          {products.length === 0 ? (
             <p className="py-12 text-center text-sm text-muted-foreground">
-              No products found.
+              {productsLoading ? "Loading products..." : "No products found."}
             </p>
           ) : (
             <div className="grid grid-cols-2 gap-3 pb-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-              {filteredProducts.map((product) => (
+              {products.map((product) => (
                 <button
                   key={product.id}
                   type="button"
@@ -389,6 +465,37 @@ export function OrderView({
             </div>
           )}
         </ScrollArea>
+        {productsTotalPages > 1 ? (
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    if (productsPage > 1) setProductsPage(productsPage - 1)
+                  }}
+                  className={productsPage <= 1 ? "pointer-events-none opacity-50" : undefined}
+                />
+              </PaginationItem>
+              <PaginationItem>
+                <span className="px-2 text-sm text-muted-foreground">
+                  Page {productsPage} of {productsTotalPages}
+                </span>
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    if (productsPage < productsTotalPages) setProductsPage(productsPage + 1)
+                  }}
+                  className={productsPage >= productsTotalPages ? "pointer-events-none opacity-50" : undefined}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        ) : null}
       </div>
 
       <div className="flex min-h-0 w-96 flex-col overflow-auto border-l">

@@ -10,9 +10,18 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { extractErrorMessage } from "@/lib/form-error"
+
+const CUSTOMERS_PAGE_SIZE = 10
 
 export function CustomerPickerDialog({
   open,
@@ -27,6 +36,8 @@ export function CustomerPickerDialog({
 }) {
   const [query, setQuery] = React.useState("")
   const [results, setResults] = React.useState<CustomerRecord[]>([])
+  const [total, setTotal] = React.useState(0)
+  const [page, setPage] = React.useState(1)
   const [loading, setLoading] = React.useState(false)
   const [showAddForm, setShowAddForm] = React.useState(false)
   const [newCustomer, setNewCustomer] = React.useState({ name: "", email: "", phone: "" })
@@ -37,26 +48,32 @@ export function CustomerPickerDialog({
 
     setQuery("")
     setResults([])
+    setTotal(0)
+    setPage(1)
     setShowAddForm(false)
     setNewCustomer({ name: "", email: "", phone: "" })
   }, [open])
 
+  const handleQueryChange = (value: string) => {
+    setQuery(value)
+    setPage(1)
+  }
+
   React.useEffect(() => {
     if (!open) return
-
-    const term = query.trim()
-    if (!term) {
-      setResults([])
-      setLoading(false)
-      return
-    }
 
     setLoading(true)
     const timeout = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/customers?q=${encodeURIComponent(term)}`)
+        const params = new URLSearchParams({ page: String(page), pageSize: String(CUSTOMERS_PAGE_SIZE) })
+        const term = query.trim()
+        if (term) params.set("q", term)
+
+        const res = await fetch(`/api/customers?${params.toString()}`)
         if (res.ok) {
-          setResults(await res.json())
+          const data = await res.json()
+          setResults(data.customers)
+          setTotal(data.total)
         }
       } finally {
         setLoading(false)
@@ -64,7 +81,9 @@ export function CustomerPickerDialog({
     }, 300)
 
     return () => clearTimeout(timeout)
-  }, [query, open])
+  }, [query, page, open])
+
+  const totalPages = Math.max(1, Math.ceil(total / CUSTOMERS_PAGE_SIZE))
 
   const handleSelect = (customer: CustomerRecord) => {
     onSelect(customer)
@@ -120,7 +139,7 @@ export function CustomerPickerDialog({
               placeholder="Search by name, email or phone..."
               className="pl-8"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => handleQueryChange(e.target.value)}
             />
           </div>
 
@@ -141,9 +160,7 @@ export function CustomerPickerDialog({
               {loading ? (
                 <div className="p-4 text-center text-sm text-muted-foreground">Searching...</div>
               ) : results.length === 0 ? (
-                <div className="p-4 text-center text-sm text-muted-foreground">
-                  {query.trim() ? "No customers found." : "Start typing to search customers."}
-                </div>
+                <div className="p-4 text-center text-sm text-muted-foreground">No customers found.</div>
               ) : (
                 results.map((customer) => (
                   <button
@@ -161,6 +178,38 @@ export function CustomerPickerDialog({
               )}
             </div>
           </ScrollArea>
+
+          {totalPages > 1 ? (
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      if (page > 1) setPage(page - 1)
+                    }}
+                    className={page <= 1 ? "pointer-events-none opacity-50" : undefined}
+                  />
+                </PaginationItem>
+                <PaginationItem>
+                  <span className="px-2 text-sm text-muted-foreground">
+                    Page {page} of {totalPages}
+                  </span>
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationNext
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      if (page < totalPages) setPage(page + 1)
+                    }}
+                    className={page >= totalPages ? "pointer-events-none opacity-50" : undefined}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          ) : null}
 
           <Separator />
 

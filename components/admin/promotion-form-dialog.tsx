@@ -7,7 +7,17 @@ import { Controller, useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
 
+import { CheckIcon, ChevronsUpDownIcon } from "lucide-react"
+
 import { Button } from "@/components/ui/button"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
 import {
   Dialog,
   DialogContent,
@@ -19,9 +29,12 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { extractErrorMessage } from "@/lib/form-error"
+import { cn } from "@/lib/utils"
 
 function positiveNumberString(message: string) {
   return z.string().min(1, message).refine((value) => Number.isFinite(Number(value)) && Number(value) > 0, message)
@@ -113,6 +126,12 @@ export function PromotionFormDialog({
   }, [dialogOpen, defaultValues, form])
 
   const target = form.watch("target")
+  const [productPickerOpen, setProductPickerOpen] = React.useState(false)
+
+  const productNames = React.useMemo(
+    () => new Map(products.map((product) => [product.id, product.name])),
+    [products],
+  )
 
   const onSubmit = async (values: PromotionFormValues) => {
     const url = promotion ? `/api/promotions/${promotion.id}` : "/api/promotions"
@@ -202,18 +221,51 @@ export function PromotionFormDialog({
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
                       <FieldLabel htmlFor="promotion-product">Product</FieldLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger id="promotion-product" className="w-full" aria-invalid={fieldState.invalid}>
-                          <SelectValue placeholder="Select a product" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {products.map((product) => (
-                            <SelectItem key={product.id} value={product.id}>
-                              {product.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Popover open={productPickerOpen} onOpenChange={setProductPickerOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            id="promotion-product"
+                            type="button"
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={productPickerOpen}
+                            aria-invalid={fieldState.invalid}
+                            className="w-full justify-between font-normal"
+                          >
+                            <span className="truncate">
+                              {field.value ? productNames.get(field.value) ?? "Select product..." : "Select product..."}
+                            </span>
+                            <ChevronsUpDownIcon className="size-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Search products..." />
+                            <CommandList className="max-h-none overflow-visible p-0">
+                              <CommandEmpty>No products found.</CommandEmpty>
+                              <ScrollArea className="h-60">
+                                <CommandGroup>
+                                  {products.map((product) => (
+                                    <CommandItem
+                                      key={product.id}
+                                      value={product.name}
+                                      onSelect={() => {
+                                        field.onChange(product.id)
+                                        setProductPickerOpen(false)
+                                      }}
+                                    >
+                                      <CheckIcon
+                                        className={cn("size-4", field.value === product.id ? "opacity-100" : "opacity-0")}
+                                      />
+                                      {product.name}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </ScrollArea>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
                   )}

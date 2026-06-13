@@ -9,13 +9,17 @@ export default async function PosOrderPage({
 }) {
   const { table: tableId } = await searchParams
 
-  const [categories, products, table, openSession, activePromotions] = await Promise.all([
+  const [categories, [products, productsTotal], table, openSession, activePromotions] = await Promise.all([
     prisma.category.findMany({ orderBy: { name: "asc" } }),
-    prisma.product.findMany({
-      where: { active: true },
-      include: { category: true },
-      orderBy: { name: "asc" },
-    }),
+    Promise.all([
+      prisma.product.findMany({
+        where: { active: true },
+        include: { category: true },
+        orderBy: { name: "asc" },
+        take: 20,
+      }),
+      prisma.product.count({ where: { active: true } }),
+    ]),
     tableId
       ? prisma.table.findUnique({
           where: { id: tableId },
@@ -59,6 +63,12 @@ export default async function PosOrderPage({
     : null
 
   return (
-    <OrderView categories={categories} products={products} table={tableWithDiscounts} hasOpenSession={!!openSession} />
+    <OrderView
+      categories={categories}
+      initialProducts={products}
+      initialProductsTotal={productsTotal}
+      table={tableWithDiscounts}
+      hasOpenSession={!!openSession}
+    />
   )
 }
