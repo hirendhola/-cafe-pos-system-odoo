@@ -35,7 +35,7 @@ const STAGE_LABELS: Record<KdsStatus, string> = {
   COMPLETED: "Completed",
 }
 
-const POLL_INTERVAL_MS = 4000
+const POLL_INTERVAL_MS = 40000
 
 export function KdsBoard({ categories }: { categories: { id: string; name: string }[] }) {
   const [orders, setOrders] = React.useState<KdsOrder[]>([])

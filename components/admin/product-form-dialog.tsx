@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import { z } from "zod"
 
 import { CategoryFormDialog, type CategoryRecord } from "@/components/admin/category-form-dialog"
+import { ImageUpload } from "@/components/admin/image-upload"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -267,9 +268,14 @@ export function ProductFormDialog({
                 name="imageUrl"
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor="product-image">Image URL</FieldLabel>
-                    <Input id="product-image" placeholder="https://..." {...field} aria-invalid={fieldState.invalid} />
-                    <FieldDescription>Optional. Shown on the POS product grid.</FieldDescription>
+                    <FieldLabel htmlFor="product-image">Image</FieldLabel>
+                    <ImageUpload
+                      id="product-image"
+                      value={field.value}
+                      onChange={field.onChange}
+                      disabled={form.formState.isSubmitting}
+                    />
+                    <FieldDescription>Optional. Shown on the POS product grid and KDS tickets.</FieldDescription>
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                   </Field>
                 )}
