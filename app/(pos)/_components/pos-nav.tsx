@@ -9,6 +9,7 @@ import { LayoutGrid, ShieldCheck, Table2, UtensilsCrossed } from "lucide-react"
 
 import { FloorTablePopup, type FloorWithTables } from "@/app/(pos)/_components/floor-table-popup"
 import { SignOutButton } from "@/components/auth/sign-out-button"
+import { SessionBar } from "@/components/pos/session-bar"
 import { Button } from "@/components/ui/button"
 
 const navLinks = [
@@ -67,6 +68,7 @@ export function PosNav({
       </nav>
 
       <div className="ml-auto flex items-center gap-3">
+        <SessionBar />
         <Button size="sm" variant="outline" onClick={() => setTableOpen(true)}>
           <Table2 />
           {selectedTable ? `Table ${selectedTable.table.number} · ${selectedTable.floor.name}` : "Select table"}

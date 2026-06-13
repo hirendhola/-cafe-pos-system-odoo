@@ -18,7 +18,7 @@ const createOrderSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const { response } = await requireUser();
+  const { user, response } = await requireUser();
   if (response) return response;
 
   const body = await request.json();
@@ -47,12 +47,15 @@ export async function POST(request: NextRequest) {
 
     if (!order) {
       const count = await tx.order.count();
+      const openSession = await tx.posSession.findFirst({ where: { closedAt: null } });
       order = await tx.order.create({
         data: {
           number: `ORD-${String(count + 1).padStart(4, "0")}`,
           tableId,
           customerId: customerId ?? undefined,
           status: "DRAFT",
+          createdById: user!.id,
+          sessionId: openSession?.id,
         },
       });
     } else if (customerId !== undefined && customerId !== order.customerId) {

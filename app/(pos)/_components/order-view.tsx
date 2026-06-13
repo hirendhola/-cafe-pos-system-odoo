@@ -68,10 +68,12 @@ export function OrderView({
   categories,
   products,
   table,
+  hasOpenSession,
 }: {
   categories: CategoryRecord[]
   products: ProductRecord[]
   table: SelectedTable
+  hasOpenSession: boolean
 }) {
   const router = useRouter()
   const [activeCategory, setActiveCategory] = React.useState("all")
@@ -194,7 +196,7 @@ export function OrderView({
   }
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full overflow-hidden">
       <div className="flex flex-1 flex-col gap-4 overflow-hidden p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap gap-2">
@@ -261,7 +263,7 @@ export function OrderView({
         </ScrollArea>
       </div>
 
-      <div className="flex w-96 flex-col border-l">
+      <div className="flex w-96 flex-col overflow-hidden border-l">
         <div className="border-b p-4">
           {table ? (
             <div>
@@ -381,9 +383,18 @@ export function OrderView({
                 Send pending items to kitchen before checkout.
               </p>
             ) : (
-              <Button variant="outline" disabled={existingOrder.total <= 0} onClick={() => setPaymentOpen(true)}>
-                <CreditCard /> Payment
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  disabled={existingOrder.total <= 0 || !hasOpenSession}
+                  onClick={() => setPaymentOpen(true)}
+                >
+                  <CreditCard /> Payment
+                </Button>
+                {!hasOpenSession ? (
+                  <p className="text-center text-xs text-muted-foreground">Open a session to take payments.</p>
+                ) : null}
+              </>
             )
           ) : null}
         </div>
