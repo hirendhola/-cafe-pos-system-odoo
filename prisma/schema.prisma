@@ -1,0 +1,335 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Auth (Better Auth)
+// ---------------------------------------------------------------------------
+
+enum Role {
+  ADMIN
+  EMPLOYEE
+}
+
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  role          Role     @default(EMPLOYEE)
+  archived      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions    Session[]
+  accounts    Account[]
+  posSessions PosSession[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("session")
+}
+
+model Account {
+  id         String @id @default(cuid())
+  accountId  String
+  providerId String
+  userId     String
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@map("verification")
+}
+
+// ---------------------------------------------------------------------------
+// Catalog
+// ---------------------------------------------------------------------------
+
+model Category {
+  id    String @id @default(cuid())
+  name  String
+  color String @default("#6366f1")
+
+  products Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("category")
+}
+
+model Product {
+  id          String  @id @default(cuid())
+  name        String
+  price       Float
+  unit        String  @default("pcs")
+  tax         Float   @default(0)
+  description String?
+  imageUrl    String?
+  showOnKds   Boolean @default(true)
+  active      Boolean @default(true)
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  orderItems OrderItem[]
+  promotions Promotion[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("product")
+}
+
+// ---------------------------------------------------------------------------
+// Payments
+// ---------------------------------------------------------------------------
+
+enum PaymentType {
+  CASH
+  CARD
+  UPI
+}
+
+model PaymentMethod {
+  id      String      @id @default(cuid())
+  type    PaymentType @unique
+  enabled Boolean     @default(true)
+  upiId   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("payment_method")
+}
+
+// ---------------------------------------------------------------------------
+// Floors & Tables
+// ---------------------------------------------------------------------------
+
+model Floor {
+  id   String @id @default(cuid())
+  name String
+
+  tables Table[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("floor")
+}
+
+model Table {
+  id     String  @id @default(cuid())
+  number Int
+  seats  Int     @default(2)
+  active Boolean @default(true)
+
+  floorId String
+  floor   Floor  @relation(fields: [floorId], references: [id], onDelete: Cascade)
+
+  orders Order[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([floorId, number])
+  @@map("table")
+}
+
+// ---------------------------------------------------------------------------
+// Coupons & Promotions
+// ---------------------------------------------------------------------------
+
+enum DiscountType {
+  PERCENT
+  FIXED
+}
+
+model Coupon {
+  id           String       @id @default(cuid())
+  code         String       @unique
+  discountType DiscountType
+  value        Float
+  active       Boolean      @default(true)
+
+  orders Order[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("coupon")
+}
+
+enum PromotionTarget {
+  PRODUCT
+  ORDER
+}
+
+model Promotion {
+  id     String          @id @default(cuid())
+  name   String
+  target PromotionTarget
+
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id])
+
+  minQty         Int?
+  minOrderAmount Float?
+
+  discountType DiscountType
+  value        Float
+  active       Boolean      @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("promotion")
+}
+
+// ---------------------------------------------------------------------------
+// Customers
+// ---------------------------------------------------------------------------
+
+model Customer {
+  id    String  @id @default(cuid())
+  name  String
+  email String?
+  phone String?
+
+  orders Order[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("customer")
+}
+
+// ---------------------------------------------------------------------------
+// POS Sessions
+// ---------------------------------------------------------------------------
+
+model PosSession {
+  id            String    @id @default(cuid())
+  openedAt      DateTime  @default(now())
+  closedAt      DateTime?
+  openingAmount Float     @default(0)
+  closingAmount Float?
+
+  openedById String
+  openedBy   User   @relation(fields: [openedById], references: [id])
+
+  orders Order[]
+
+  @@map("pos_session")
+}
+
+// ---------------------------------------------------------------------------
+// Orders
+// ---------------------------------------------------------------------------
+
+enum OrderStatus {
+  DRAFT
+  PAID
+  CANCELLED
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  number        String      @unique
+  status        OrderStatus @default(DRAFT)
+  subtotal      Float       @default(0)
+  tax           Float       @default(0)
+  discount      Float       @default(0)
+  total         Float       @default(0)
+  paymentMethod String?
+  paymentRef    String?
+
+  tableId String?
+  table   Table?  @relation(fields: [tableId], references: [id])
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  sessionId String?
+  session   PosSession? @relation(fields: [sessionId], references: [id])
+
+  couponId String?
+  coupon   Coupon? @relation(fields: [couponId], references: [id])
+
+  items OrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("order")
+}
+
+enum KdsStatus {
+  TO_COOK
+  PREPARING
+  COMPLETED
+}
+
+model OrderItem {
+  id           String    @id @default(cuid())
+  qty          Int
+  unitPrice    Float
+  lineDiscount Float     @default(0)
+  kdsStatus    KdsStatus @default(TO_COOK)
+  kdsItemDone  Boolean   @default(false)
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("order_item")
+}
