@@ -35,6 +35,16 @@ type ClosingSummary = {
   grandTotal: number
 }
 
+type ExpectedCashPreview = {
+  openingAmount: number
+  cashSales: number
+  cardSales: number
+  upiSales: number
+  ordersCount: number
+  grandTotal: number
+  expectedCash: number
+}
+
 function SummaryRow({ label, value, emphasize }: { label: string; value: string; emphasize?: boolean }) {
   return (
     <div className="flex items-center justify-between">
@@ -54,6 +64,8 @@ export function SessionBar() {
   const [closingAmount, setClosingAmount] = React.useState("")
   const [submitting, setSubmitting] = React.useState(false)
   const [summary, setSummary] = React.useState<ClosingSummary | null>(null)
+  const [expected, setExpected] = React.useState<ExpectedCashPreview | null>(null)
+  const [expectedLoading, setExpectedLoading] = React.useState(false)
 
   const fetchSession = React.useCallback(() => {
     return fetch("/api/sessions")
@@ -65,6 +77,19 @@ export function SessionBar() {
   React.useEffect(() => {
     fetchSession()
   }, [fetchSession])
+
+  React.useEffect(() => {
+    if (!closeDialogOpen || !current) {
+      setExpected(null)
+      return
+    }
+
+    setExpectedLoading(true)
+    fetch(`/api/sessions/${current.id}/summary`)
+      .then((res) => res.json())
+      .then((data: ExpectedCashPreview) => setExpected(data))
+      .finally(() => setExpectedLoading(false))
+  }, [closeDialogOpen, current])
 
   const handleOpen = async () => {
     setSubmitting(true)
@@ -122,6 +147,8 @@ export function SessionBar() {
 
   if (loading) return null
 
+  const variance = expected && closingAmount !== "" ? Number(closingAmount) - expected.expectedCash : null
+
   return (
     <>
       {current ? (
@@ -173,10 +200,25 @@ export function SessionBar() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Close session</DialogTitle>
-            <DialogDescription>Count the cash drawer and enter the closing amount.</DialogDescription>
+            <DialogDescription>Count the cash drawer and enter what you counted.</DialogDescription>
           </DialogHeader>
+
+          {expectedLoading ? (
+            <p className="text-sm text-muted-foreground">Calculating expected cash...</p>
+          ) : expected ? (
+            <div className="flex flex-col gap-1.5 rounded-md border bg-muted/50 p-3 text-sm">
+              <SummaryRow label="Opening cash" value={currency.format(expected.openingAmount)} />
+              <SummaryRow label="+ Cash sales" value={currency.format(expected.cashSales)} />
+              <Separator className="my-0.5" />
+              <div className="flex items-center justify-between">
+                <span className="font-medium">Expected cash in drawer</span>
+                <span className="font-semibold">{currency.format(expected.expectedCash)}</span>
+              </div>
+            </div>
+          ) : null}
+
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="closing-amount">Closing cash amount</Label>
+            <Label htmlFor="closing-amount">Closing cash amount (counted)</Label>
             <Input
               id="closing-amount"
               type="number"
@@ -186,6 +228,25 @@ export function SessionBar() {
               value={closingAmount}
               onChange={(e) => setClosingAmount(e.target.value)}
             />
+            {variance !== null ? (
+              variance === 0 ? (
+                <p className="text-xs text-emerald-600">Matches the expected amount.</p>
+              ) : (
+                <p className="text-xs font-medium text-destructive">
+                  {variance > 0
+                    ? `${currency.format(variance)} over the expected amount.`
+                    : `${currency.format(Math.abs(variance))} short of the expected amount.`}
+                </p>
+              )
+            ) : expected ? (
+              <button
+                type="button"
+                className="self-start text-xs text-muted-foreground underline-offset-2 hover:underline"
+                onClick={() => setClosingAmount(expected.expectedCash.toFixed(2))}
+              >
+                Use expected amount
+              </button>
+            ) : null}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setCloseDialogOpen(false)}>
