@@ -50,7 +50,7 @@ export function SignupForm() {
       },
       {
         onSuccess: () => {
-          router.push("/")
+          router.push("/pos")
           router.refresh()
         },
         onError: (ctx) => {
