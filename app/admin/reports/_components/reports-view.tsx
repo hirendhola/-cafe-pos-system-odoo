@@ -1,5 +1,6 @@
 "use client"
 
+import { EmployeesReport } from "./employees-report"
 import { NetSalesReport } from "./net-sales-report"
 import { OrdersReport } from "./orders-report"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -27,7 +28,7 @@ export function ReportsView({ employees }: { employees: { id: string; name: stri
         <OrdersReport employees={employees} />
       </TabsContent>
       <TabsContent value="employees" className="mt-4">
-        <ComingSoon label="Employees" />
+        <EmployeesReport />
       </TabsContent>
       <TabsContent value="items" className="mt-4">
         <ComingSoon label="Items" />
