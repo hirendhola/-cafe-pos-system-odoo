@@ -1,6 +1,13 @@
+import { prisma } from "@/lib/db"
+
 import { ReportsView } from "./_components/reports-view"
 
-export default function AdminReportsPage() {
+export default async function AdminReportsPage() {
+  const employees = await prisma.user.findMany({
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  })
+
   return (
     <div className="flex flex-col gap-4">
       <div>
@@ -8,7 +15,7 @@ export default function AdminReportsPage() {
         <p className="text-sm text-muted-foreground">Sales, orders, employee, item and discount reporting.</p>
       </div>
 
-      <ReportsView />
+      <ReportsView employees={employees} />
     </div>
   )
 }

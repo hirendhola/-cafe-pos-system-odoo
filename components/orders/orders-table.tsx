@@ -55,12 +55,14 @@ export function OrdersTable({
   fixedParams,
   employees,
   sessions,
+  hideDateFilter = false,
 }: {
   basePath: string
   showEmployee?: boolean
   fixedParams?: Record<string, string>
   employees?: { id: string; name: string }[]
   sessions?: { id: string; openedAt: string; openedBy: { name: string } }[]
+  hideDateFilter?: boolean
 }) {
   const router = useRouter()
   const [orders, setOrders] = React.useState<OrderRow[]>([])
@@ -132,53 +134,55 @@ export function OrdersTable({
           </SelectContent>
         </Select>
 
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn("justify-start text-left font-normal", !dateRange?.from && "text-muted-foreground")}
-            >
-              <CalendarIcon />
-              {dateRange?.from ? (
-                dateRange.to ? (
-                  <>
-                    {format(dateRange.from, "dd MMM yyyy")} - {format(dateRange.to, "dd MMM yyyy")}
-                  </>
+        {hideDateFilter ? null : (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn("justify-start text-left font-normal", !dateRange?.from && "text-muted-foreground")}
+              >
+                <CalendarIcon />
+                {dateRange?.from ? (
+                  dateRange.to ? (
+                    <>
+                      {format(dateRange.from, "dd MMM yyyy")} - {format(dateRange.to, "dd MMM yyyy")}
+                    </>
+                  ) : (
+                    format(dateRange.from, "dd MMM yyyy")
+                  )
                 ) : (
-                  format(dateRange.from, "dd MMM yyyy")
-                )
-              ) : (
-                "Date range"
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="range"
-              selected={dateRange}
-              onSelect={(range) => {
-                setPage(1)
-                setDateRange(range)
-              }}
-              numberOfMonths={1}
-            />
-            {dateRange ? (
-              <div className="border-t p-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => {
-                    setPage(1)
-                    setDateRange(undefined)
-                  }}
-                >
-                  Clear
-                </Button>
-              </div>
-            ) : null}
-          </PopoverContent>
-        </Popover>
+                  "Date range"
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="range"
+                selected={dateRange}
+                onSelect={(range) => {
+                  setPage(1)
+                  setDateRange(range)
+                }}
+                numberOfMonths={1}
+              />
+              {dateRange ? (
+                <div className="border-t p-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => {
+                      setPage(1)
+                      setDateRange(undefined)
+                    }}
+                  >
+                    Clear
+                  </Button>
+                </div>
+              ) : null}
+            </PopoverContent>
+          </Popover>
+        )}
 
         {employees ? (
           <Select
