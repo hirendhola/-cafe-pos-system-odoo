@@ -1,0 +1,42 @@
+"use client"
+
+import { NetSalesReport } from "./net-sales-report"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
+function ComingSoon({ label }: { label: string }) {
+  return <p className="py-12 text-center text-sm text-muted-foreground">The {label} report is coming up next.</p>
+}
+
+export function ReportsView() {
+  return (
+    <Tabs defaultValue="net-sales">
+      <TabsList className="flex-wrap">
+        <TabsTrigger value="net-sales">Net Sales</TabsTrigger>
+        <TabsTrigger value="orders">Orders</TabsTrigger>
+        <TabsTrigger value="employees">Employees</TabsTrigger>
+        <TabsTrigger value="items">Items</TabsTrigger>
+        <TabsTrigger value="discounts">Discounts &amp; Promotions</TabsTrigger>
+        <TabsTrigger value="sessions">Sessions</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="net-sales" className="mt-4">
+        <NetSalesReport />
+      </TabsContent>
+      <TabsContent value="orders" className="mt-4">
+        <ComingSoon label="Orders" />
+      </TabsContent>
+      <TabsContent value="employees" className="mt-4">
+        <ComingSoon label="Employees" />
+      </TabsContent>
+      <TabsContent value="items" className="mt-4">
+        <ComingSoon label="Items" />
+      </TabsContent>
+      <TabsContent value="discounts" className="mt-4">
+        <ComingSoon label="Discounts & Promotions" />
+      </TabsContent>
+      <TabsContent value="sessions" className="mt-4">
+        <ComingSoon label="Sessions" />
+      </TabsContent>
+    </Tabs>
+  )
+}

@@ -3,7 +3,21 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
-import { Contact, CreditCard, LayoutGrid, MapPinned, Package, Percent, ReceiptText, Store, Tags, Users, UtensilsCrossed } from "lucide-react"
+import {
+  BarChart3,
+  Contact,
+  CreditCard,
+  LayoutDashboard,
+  LayoutGrid,
+  MapPinned,
+  Package,
+  Percent,
+  ReceiptText,
+  Store,
+  Tags,
+  Users,
+  UtensilsCrossed,
+} from "lucide-react"
 
 import { SignOutButton } from "@/components/auth/sign-out-button"
 import {
@@ -44,6 +58,23 @@ export function AdminSidebar({ user }: { user: { name: string; email: string; ro
         </div>
       </SidebarHeader>
       <SidebarContent>
+        {user.role === "ADMIN" ? (
+          <SidebarGroup>
+            <SidebarGroupLabel>Overview</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={pathname.startsWith("/admin/dashboard")} tooltip="Dashboard">
+                    <Link href="/admin/dashboard">
+                      <LayoutDashboard />
+                      <span>Dashboard</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ) : null}
         <SidebarGroup>
           <SidebarGroupLabel>Catalog</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -97,6 +128,14 @@ export function AdminSidebar({ user }: { user: { name: string; email: string; ro
             <SidebarGroupLabel>Administration</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={pathname.startsWith("/admin/reports")} tooltip="Reports">
+                    <Link href="/admin/reports">
+                      <BarChart3 />
+                      <span>Reports</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={pathname.startsWith("/admin/users")} tooltip="Users">
                     <Link href="/admin/users">

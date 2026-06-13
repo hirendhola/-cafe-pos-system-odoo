@@ -588,7 +588,7 @@ export function OrderView({
             discountBreakdown.length > 0 ? (
               discountBreakdown.map((entry) => (
                 <div key={entry.label} className="flex items-center justify-between text-sm">
-                  <span className="max-w-[180px] truncate text-muted-foreground" title={entry.label}>
+                  <span className="max-w-45 truncate text-muted-foreground" title={entry.label}>
                     {entry.label}
                   </span>
                   <span className="text-emerald-600">-{currency.format(entry.amount)}</span>
