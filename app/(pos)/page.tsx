@@ -22,7 +22,10 @@ export default async function PosOrderPage({
             floor: true,
             orders: {
               where: { status: "DRAFT" },
-              include: { items: { include: { product: true }, orderBy: { createdAt: "asc" } } },
+              include: {
+                items: { include: { product: true }, orderBy: { createdAt: "asc" } },
+                customer: true,
+              },
               take: 1,
             },
           },

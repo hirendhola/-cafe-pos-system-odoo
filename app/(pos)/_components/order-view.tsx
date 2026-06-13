@@ -4,9 +4,11 @@ import * as React from "react"
 
 import { useRouter } from "next/navigation"
 
-import { Minus, Plus, Search, Send, Trash2 } from "lucide-react"
+import { Minus, Plus, Search, Send, Trash2, UserRound } from "lucide-react"
 import { toast } from "sonner"
 
+import type { CustomerRecord } from "@/components/admin/customer-form-dialog"
+import { CustomerPickerDialog } from "@/components/pos/customer-picker-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -40,6 +42,7 @@ type ExistingOrder = {
   id: string
   number: string
   total: number
+  customer: CustomerRecord | null
   items: {
     id: string
     qty: number
@@ -69,6 +72,14 @@ export function OrderView({
   const [search, setSearch] = React.useState("")
   const [cart, setCart] = React.useState<{ product: ProductRecord; qty: number }[]>([])
   const [sending, setSending] = React.useState(false)
+  const [pickerOpen, setPickerOpen] = React.useState(false)
+  const [updatingCustomer, setUpdatingCustomer] = React.useState(false)
+  const existingOrder = table?.orders[0]
+  const [selectedCustomer, setSelectedCustomer] = React.useState<CustomerRecord | null>(existingOrder?.customer ?? null)
+
+  React.useEffect(() => {
+    setSelectedCustomer(existingOrder?.customer ?? null)
+  }, [table?.id, existingOrder?.id, existingOrder?.customer?.id])
 
   const filteredProducts = React.useMemo(() => {
     return products.filter((product) => {
@@ -114,6 +125,7 @@ export function OrderView({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tableId: table.id,
+          customerId: selectedCustomer?.id ?? undefined,
           items: cart.map((item) => ({ productId: item.product.id, qty: item.qty })),
         }),
       })
@@ -133,7 +145,34 @@ export function OrderView({
     }
   }
 
-  const existingOrder = table?.orders[0]
+  const handleCustomerSelect = async (customer: CustomerRecord | null) => {
+    if (!existingOrder) {
+      setSelectedCustomer(customer)
+      return
+    }
+
+    setUpdatingCustomer(true)
+    try {
+      const res = await fetch(`/api/orders/${existingOrder.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customerId: customer?.id ?? null }),
+      })
+
+      const data = await res.json().catch(() => null)
+
+      if (!res.ok) {
+        toast.error(extractErrorMessage(data, "Failed to update customer."))
+        return
+      }
+
+      setSelectedCustomer(customer)
+      toast.success(customer ? `Customer set to ${customer.name}.` : "Customer removed.")
+      router.refresh()
+    } finally {
+      setUpdatingCustomer(false)
+    }
+  }
 
   return (
     <div className="flex h-full">
@@ -223,6 +262,27 @@ export function OrderView({
           )}
         </div>
 
+        {table ? (
+          <div className="border-b p-4">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-sm font-medium">Customer</span>
+              <Button size="sm" variant="outline" disabled={updatingCustomer} onClick={() => setPickerOpen(true)}>
+                <UserRound /> {selectedCustomer ? "Change" : "Add customer"}
+              </Button>
+            </div>
+            {selectedCustomer ? (
+              <div className="text-sm">
+                <div className="font-medium">{selectedCustomer.name}</div>
+                <div className="text-xs text-muted-foreground">
+                  {selectedCustomer.email ?? selectedCustomer.phone ?? "No contact info"}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No customer assigned.</p>
+            )}
+          </div>
+        ) : null}
+
         {existingOrder ? (
           <div className="border-b p-4">
             <div className="mb-2 text-sm font-medium">Already sent to kitchen</div>
@@ -292,6 +352,13 @@ export function OrderView({
           </Button>
         </div>
       </div>
+
+      <CustomerPickerDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        value={selectedCustomer}
+        onSelect={handleCustomerSelect}
+      />
     </div>
   )
 }
