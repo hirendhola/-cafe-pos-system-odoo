@@ -156,19 +156,20 @@ export function SessionBar() {
   return (
     <>
       {current ? (
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <Badge variant="secondary" className="gap-1">
             <Wallet className="size-3.5" />
-            Session open since{" "}
+            <span className="hidden sm:inline">Session open since </span>
             {new Date(current.openedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </Badge>
           <Button size="sm" variant="outline" onClick={() => setCloseDialogOpen(true)}>
-            Close Session
+            <span className="hidden sm:inline">Close Session</span>
+            <span className="sm:hidden">Close</span>
           </Button>
         </div>
       ) : (
         <Button size="sm" variant="outline" onClick={() => setOpenDialogOpen(true)}>
-          <Wallet /> Open Session
+          <Wallet /> <span className="hidden sm:inline">Open Session</span>
         </Button>
       )}
 
