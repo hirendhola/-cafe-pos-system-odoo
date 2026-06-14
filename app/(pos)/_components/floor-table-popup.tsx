@@ -52,7 +52,7 @@ export function FloorTablePopup({
           </p>
         ) : (
           <Tabs defaultValue={floors[0].id}>
-            <TabsList>
+            <TabsList className="max-w-full overflow-x-auto">
               {floors.map((floor) => (
                 <TabsTrigger key={floor.id} value={floor.id}>
                   {floor.name}
@@ -64,7 +64,7 @@ export function FloorTablePopup({
                 {floor.tables.length === 0 ? (
                   <p className="py-8 text-center text-sm text-muted-foreground">No tables on this floor.</p>
                 ) : (
-                  <div className="grid grid-cols-3 gap-3 py-2 sm:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-3 py-2 sm:grid-cols-3 md:grid-cols-4">
                     {floor.tables.map((table) => {
                       const isOccupied = table.orders.length > 0
                       const isSelected = table.id === selectedTableId

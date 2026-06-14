@@ -114,7 +114,7 @@ export function TableFormDialog({
         </DialogHeader>
         <form id="table-form" noValidate onSubmit={form.handleSubmit(onSubmit)}>
           <FieldGroup className="gap-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Controller
                 control={form.control}
                 name="number"

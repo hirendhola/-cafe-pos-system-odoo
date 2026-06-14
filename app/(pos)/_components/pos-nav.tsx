@@ -40,13 +40,13 @@ export function PosNav({
   }, [floors, selectedTableId])
 
   return (
-    <header className="flex h-14 items-center gap-2 border-b px-4">
-      <div className="flex items-center gap-2 font-medium">
+    <header className="flex h-14 items-center gap-2 overflow-x-auto border-b px-4">
+      <div className="flex shrink-0 items-center gap-2 font-medium">
         <UtensilsCrossed className="size-5" />
-        Cafe POS
+        <span className="hidden sm:inline">Cafe POS</span>
       </div>
 
-      <nav className="flex items-center gap-1">
+      <nav className="flex shrink-0 items-center gap-1">
         {navLinks.map((link) => {
           const Icon = link.icon
           const isActive = pathname === link.href
@@ -54,7 +54,7 @@ export function PosNav({
           return (
             <Button key={link.href} asChild size="sm" variant={isActive ? "secondary" : "ghost"}>
               <Link href={link.href}>
-                <Icon /> {link.label}
+                <Icon /> <span className="hidden lg:inline">{link.label}</span>
               </Link>
             </Button>
           )
@@ -62,19 +62,26 @@ export function PosNav({
         {user.role === "ADMIN" ? (
           <Button asChild size="sm" variant="ghost">
             <Link href="/admin/products">
-              <ShieldCheck /> Admin
+              <ShieldCheck /> <span className="hidden lg:inline">Admin</span>
             </Link>
           </Button>
         ) : null}
       </nav>
 
-      <div className="ml-auto flex items-center gap-3">
+      <div className="ml-auto flex shrink-0 items-center gap-3">
         <SessionBar />
         <Button size="sm" variant="outline" onClick={() => setTableOpen(true)}>
           <Table2 />
-          {selectedTable ? `Table ${selectedTable.table.number} · ${selectedTable.floor.name}` : "Select table"}
+          {selectedTable ? (
+            <>
+              <span className="hidden sm:inline">{`Table ${selectedTable.table.number} · ${selectedTable.floor.name}`}</span>
+              <span className="sm:hidden">{`T${selectedTable.table.number}`}</span>
+            </>
+          ) : (
+            "Select table"
+          )}
         </Button>
-        <div className="hidden text-right text-sm sm:block">
+        <div className="hidden text-right text-sm xl:block">
           <div className="font-medium">{user.name}</div>
           <div className="text-muted-foreground">{user.email}</div>
         </div>

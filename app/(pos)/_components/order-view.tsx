@@ -43,6 +43,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator"
 import { extractErrorMessage } from "@/lib/form-error"
 import { useKdsEvents } from "@/lib/hooks/use-kds-events"
+import { cn } from "@/lib/utils"
 
 const currency = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -139,6 +140,7 @@ export function OrderView({
     null
   )
   const [busyItemId, setBusyItemId] = React.useState<string | null>(null)
+  const [mobileView, setMobileView] = React.useState<"menu" | "cart">("menu")
   const existingOrder = table?.orders[0]
   const [selectedCustomer, setSelectedCustomer] =
     React.useState<CustomerRecord | null>(existingOrder?.customer ?? null)
@@ -231,6 +233,8 @@ export function OrderView({
   const removeItem = (productId: string) => {
     setCart((prev) => prev.filter((item) => item.product.id !== productId))
   }
+
+  const cartItemCount = cart.reduce((sum, item) => sum + item.qty, 0)
 
   const cartSubtotal = cart.reduce(
     (sum, item) => sum + item.product.price * item.qty,
@@ -375,9 +379,31 @@ export function OrderView({
   }
 
   return (
-    <div className="flex h-full overflow-auto">
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4">
-        {" "}
+    <div className="flex h-full flex-col overflow-hidden lg:flex-row">
+      <div className="flex shrink-0 gap-2 border-b p-2 lg:hidden">
+        <Button
+          variant={mobileView === "menu" ? "default" : "outline"}
+          className="flex-1"
+          onClick={() => setMobileView("menu")}
+        >
+          Menu
+        </Button>
+        <Button
+          variant={mobileView === "cart" ? "default" : "outline"}
+          className="flex-1"
+          onClick={() => setMobileView("cart")}
+        >
+          Cart{cartItemCount > 0 ? ` (${cartItemCount})` : ""}
+        </Button>
+      </div>
+
+      <div
+        className={cn(
+          "flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4",
+          mobileView === "cart" && "hidden",
+          "lg:flex"
+        )}
+      >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap gap-2">
             <Button
@@ -399,7 +425,7 @@ export function OrderView({
             ))}
           </div>
           <div className="flex gap-2">
-            <div className="relative sm:w-64">
+            <div className="relative min-w-0 flex-1 sm:w-64 sm:flex-none">
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
@@ -409,7 +435,7 @@ export function OrderView({
               />
             </div>
             <Select value={sort} onValueChange={handleSortChange}>
-              <SelectTrigger className="w-44">
+              <SelectTrigger className="w-36 shrink-0 sm:w-44">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -498,7 +524,13 @@ export function OrderView({
         ) : null}
       </div>
 
-      <div className="flex min-h-0 w-96 flex-col overflow-auto border-l">
+      <div
+        className={cn(
+          "flex min-h-0 w-full flex-col overflow-auto border-t lg:w-96 lg:border-t-0 lg:border-l",
+          mobileView === "menu" && "hidden",
+          "lg:flex"
+        )}
+      >
         <div className="border-b p-4">
           {table ? (
             <div>

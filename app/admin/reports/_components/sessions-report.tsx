@@ -91,7 +91,7 @@ export function SessionsReport() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">Most recent 50 sessions, newest first.</p>
         <ExportMenu data={sessions} columns={exportColumns} filename={`sessions-${new Date().toISOString().slice(0, 10)}`} sheetName="Sessions" />
       </div>
